@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+  <asset><contributor><author></author><authoring_tool>FBX COLLADA exporter</authoring_tool><comments></comments></contributor><created>2013-06-25T14:53:40Z</created><keywords></keywords><modified>2013-06-25T14:53:40Z</modified><revision></revision><subject></subject><title></title><unit meter="1.000000" name="centimeter"></unit><up_axis>Y_UP</up_axis></asset>
+  <library_images>
+    <image id="file1-image" name="file1"><init_from>textures/colorswatches.dds</init_from></image>
+  </library_images>
+  <library_materials>
+    <material id="cube_default_1" name="cube_default_1">
+      <instance_effect url="#cube_default_1-fx"/>
+    </material>
+  </library_materials>
+  <library_effects>
+    <effect id="cube_default_1-fx" name="cube_default_1">
+      <profile_COMMON>
+        <technique sid="standard">
+          <phong>
+            <emission>
+              <color sid="emission">0.000000  0.000000 0.000000 1.000000</color>
+            </emission>
+            <ambient>
+              <color sid="ambient">0.000000  0.000000 0.000000 1.000000</color>
+            </ambient>
+            <diffuse>
+              <texture texture="file1-image" texcoord="CHANNEL0">
+                <extra>
+                  <technique profile="MAYA">
+                    <wrapU sid="wrapU0">TRUE</wrapU>
+                    <wrapV sid="wrapV0">TRUE</wrapV>
+                    <blend_mode>NONE</blend_mode>
+                  </technique>
+                </extra>
+              </texture>
+            </diffuse>
+            <specular>
+              <color sid="specular">0.500000  0.500000 0.500000 1.000000</color>
+            </specular>
+            <shininess>
+              <float sid="shininess">6.311791</float>
+            </shininess>
+            <reflective>
+              <color sid="reflective">0.000000  0.000000 0.000000 1.000000</color>
+            </reflective>
+            <reflectivity>
+              <float sid="reflectivity">0.500000</float>
+            </reflectivity>
+            <transparent opaque="RGB_ZERO">
+              <color sid="transparent">0.000000  0.000000 0.000000 1.000000</color>
+            </transparent>
+            <transparency>
+              <float sid="transparency">1.000000</float>
+            </transparency>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_geometries>
+    <geometry id="cube01_low-lib" name="cube01_lowMesh">
+      <mesh>
+        <source id="cube01_low-POSITION">
+          <float_array id="cube01_low-POSITION-array" count="24">
+-50.000000 0.000000 50.000000
+50.000000 0.000000 50.000000
+-50.000000 100.000000 50.000000
+50.000000 100.000000 50.000000
+-50.000000 100.000000 -49.999992
+50.000000 100.000000 -49.999992
+-50.000000 0.000000 -49.999992
+50.000000 0.000000 -49.999992
+</float_array>
+          <technique_common>
+            <accessor source="#cube01_low-POSITION-array" count="8" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="cube01_low-Normal0">
+          <float_array id="cube01_low-Normal0-array" count="108">
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 -1.000000 0.000000
+0.000000 -1.000000 0.000000
+0.000000 -1.000000 0.000000
+0.000000 -1.000000 0.000000
+0.000000 -1.000000 0.000000
+0.000000 -1.000000 0.000000
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+</float_array>
+          <technique_common>
+            <accessor source="#cube01_low-Normal0-array" count="36" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="cube01_low-UV0">
+          <float_array id="cube01_low-UV0-array" count="48">
+0.080861 0.687917
+0.109521 0.687917
+0.109521 0.716577
+0.080861 0.716577
+0.110159 0.687917
+0.138820 0.687917
+0.138820 0.716577
+0.110159 0.716577
+0.134424 0.716907
+0.163085 0.716907
+0.163085 0.745567
+0.134424 0.745567
+0.105258 0.716907
+0.133918 0.716907
+0.133918 0.745567
+0.105258 0.745567
+0.080861 0.745897
+0.109521 0.745897
+0.109521 0.774557
+0.080861 0.774557
+0.110159 0.745897
+0.138820 0.745897
+0.138820 0.774557
+0.110159 0.774557
+</float_array>
+          <technique_common>
+            <accessor source="#cube01_low-UV0-array" count="24" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="cube01_low-VERTEX">
+          <input semantic="POSITION" source="#cube01_low-POSITION"/>
+        </vertices>
+        <triangles count="12" material="cube_default_1"><input semantic="VERTEX" offset="0" source="#cube01_low-VERTEX"/><input semantic="NORMAL" offset="1" source="#cube01_low-Normal0"/><input semantic="TEXCOORD" offset="2" set="0" source="#cube01_low-UV0"/><p> 2 0 3 0 1 0 3 2 2 3 3 2 0 4 0 1 5 1 3 6 5 4 7 7 2 8 4 4 9 7 3 10 5 5 11 6 7 12 10 6 13 11 5 14 9 6 15 11 4 16 8 5 17 9 1 18 14 0 19 15 7 20 13 0 21 15 6 22 12 7 23 13 1 24 16 5 25 18 3 26 19 5 27 18 1 28 16 7 29 17 2 30 22 4 31 23 0 32 21 0 33 21 4 34 23 6 35 20</p></triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_visual_scenes>
+    <visual_scene id="cube01_low" name="cube01_low">
+      <node name="cube01_low" id="cube01_low" sid="cube01_low"><matrix sid="matrix">0.010000 0.000000 0.000000 0.000000 0.000000 0.010000 0.000000 0.000000 0.000000 0.000000 0.010000 0.000000 0.000000 0.000000 0.000000 1.000000</matrix><instance_geometry url="#cube01_low-lib"><bind_material><technique_common><instance_material symbol="cube_default_1" target="#cube_default_1"/></technique_common></bind_material></instance_geometry><extra><technique profile="FCOLLADA"><visibility>1.000000</visibility></technique></extra></node>
+      <extra><technique profile="MAX3D"><frame_rate>24.000000</frame_rate></technique><technique profile="FCOLLADA"><start_time>0.041667</start_time><end_time>2.000000</end_time></technique></extra>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#cube01_low"></instance_visual_scene>
+  </scene>
+</COLLADA>

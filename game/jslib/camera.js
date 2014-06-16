@@ -1,0 +1,830 @@
+// Copyright (c) 2009-2014 Turbulenz Limited
+//
+// Camera
+//
+var Camera = (function () {
+    function Camera(md) {
+        this.viewOffsetX = 0.0;
+        this.viewOffsetY = 0.0;
+        this.recipViewWindowX = 1.0 / 1.0;
+        this.recipViewWindowY = 1.0 / 1.0;
+        this.infinite = false;
+        this.parallel = false;
+        this.aspectRatio = 4.0 / 3.0;
+        this.nearPlane = 1.0;
+        this.farPlane = 1000.0;
+        this.md = md;
+        this.matrix = md.m43BuildIdentity();
+        this.viewMatrix = md.m43BuildIdentity();
+        this.updateProjectionMatrix();
+        this.viewProjectionMatrix = this.projectionMatrix.slice();
+        this.frustumPlanes = [];
+        this.updateFrustumPlanes();
+    }
+    Camera.prototype.lookAt = function (lookAt, up, eyePosition) {
+        var md = this.md;
+        var zaxis = md.v3Sub(eyePosition, lookAt, this._tempZAxis);
+        md.v3Normalize(zaxis, zaxis);
+        var xaxis = md.v3Cross(md.v3Normalize(up, up), zaxis, this._tempXAxis);
+        md.v3Normalize(xaxis, xaxis);
+        var yaxis = md.v3Cross(zaxis, xaxis, this._tempYAxis);
+        this.matrix = md.m43Build(xaxis, yaxis, zaxis, eyePosition, this.matrix);
+    };
+
+    Camera.prototype.updateProjectionMatrix = function () {
+        var rcpvwX = this.recipViewWindowX;
+        var rcpvwY = this.recipViewWindowY * this.aspectRatio;
+        var shearX = rcpvwX * this.viewOffsetX;
+        var shearY = rcpvwY * this.viewOffsetY;
+        var far = this.farPlane;
+        var near = this.nearPlane;
+
+        var rcpfn;
+        if (far !== near) {
+            rcpfn = (1.0 / (far - near));
+        } else {
+            rcpfn = 0.0;
+        }
+
+        var z0, z1, w0, w1;
+        if (this.parallel) {
+            z0 = -2.0 * rcpfn;
+            w0 = (-(far + near) * rcpfn);
+            z1 = 0.0;
+            w1 = 1.0;
+        } else {
+            if (this.infinite) {
+                z0 = -1.0;
+            } else {
+                z0 = (-(far + near) * rcpfn);
+                //z0 = (far * rcpfn);
+            }
+
+            w0 = -(2.0 * far * near * rcpfn);
+
+            //w0 = (-z0 * near);
+            z1 = -1.0;
+            w1 = 0.0;
+        }
+
+        this.projectionMatrix = this.md.m44Build(rcpvwX, 0.0, 0.0, 0.0, 0.0, rcpvwY, 0.0, 0.0, -shearX, -shearY, z0, z1, 0.0, 0.0, w0, w1, this.projectionMatrix);
+    };
+
+    Camera.prototype.updateViewMatrix = function () {
+        var md = this.md;
+        this.viewMatrix = md.m43InverseOrthonormal(this.matrix, this.viewMatrix);
+    };
+
+    Camera.prototype.updateViewProjectionMatrix = function () {
+        var md = this.md;
+        this.viewProjectionMatrix = md.m43MulM44(this.viewMatrix, this.projectionMatrix, this.viewProjectionMatrix);
+    };
+
+    Camera.prototype.extractFrustumPlanes = function (m, p) {
+        var md = this.md;
+        var m0 = m[0];
+        var m1 = m[1];
+        var m2 = m[2];
+        var m3 = m[3];
+        var m4 = m[4];
+        var m5 = m[5];
+        var m6 = m[6];
+        var m7 = m[7];
+        var m8 = m[8];
+        var m9 = m[9];
+        var m10 = m[10];
+        var m11 = m[11];
+        var m12 = m[12];
+        var m13 = m[13];
+        var m14 = m[14];
+        var m15 = m[15];
+        var planes = (p || []);
+
+        // Negate 'd' here to avoid doing it on the isVisible functions
+        planes[0] = md.v4Build((m3 + m0), (m7 + m4), (m11 + m8), -(m15 + m12), planes[0]);
+        md.planeNormalize(planes[0], planes[0]);
+
+        planes[1] = md.v4Build((m3 - m0), (m7 - m4), (m11 - m8), -(m15 - m12), planes[1]);
+        md.planeNormalize(planes[1], planes[1]);
+
+        planes[2] = md.v4Build((m3 - m1), (m7 - m5), (m11 - m9), -(m15 - m13), planes[2]);
+        md.planeNormalize(planes[2], planes[2]);
+
+        planes[3] = md.v4Build((m3 + m1), (m7 + m5), (m11 + m9), -(m15 + m13), planes[3]);
+        md.planeNormalize(planes[3], planes[3]);
+
+        planes[4] = md.v4Build((m3 + m2), (m7 + m6), (m11 + m10), -(m15 + m14), planes[4]);
+        md.planeNormalize(planes[4], planes[4]);
+
+        planes[5] = md.v4Build((m3 - m2), (m7 - m6), (m11 - m10), -(m15 - m14), planes[5]);
+        md.planeNormalize(planes[5], planes[5]);
+
+        return planes;
+    };
+
+    Camera.prototype.updateFrustumPlanes = function () {
+        this.frustumPlanes = this.extractFrustumPlanes(this.viewProjectionMatrix, this.frustumPlanes);
+    };
+
+    Camera.prototype.isVisiblePoint = function (p) {
+        var md = this.md;
+        return md.isInsidePlanesPoint(p, this.frustumPlanes);
+    };
+
+    Camera.prototype.isVisibleSphere = function (c, r) {
+        var md = this.md;
+        return md.isInsidePlanesSphere(c, r, this.frustumPlanes);
+    };
+
+    Camera.prototype.isVisibleBox = function (c, h) {
+        var md = this.md;
+        return md.isInsidePlanesBox(c, h, this.frustumPlanes);
+    };
+
+    Camera.prototype.isVisibleAABB = function (extents) {
+        var md = this.md;
+        return md.aabbIsInsidePlanes(extents, this.frustumPlanes);
+    };
+
+    Camera.prototype.isFullyInsideAABB = function (extents) {
+        var md = this.md;
+        return md.aabbIsFullyInsidePlanes(extents, this.frustumPlanes);
+    };
+
+    Camera.prototype.getFrustumPoints = function (farPlane, nearPlane, points) {
+        var md = this.md;
+        var viewOffsetX = this.viewOffsetX;
+        var viewOffsetY = this.viewOffsetY;
+
+        var viewWindowX = 1.0 / this.recipViewWindowX;
+        var viewWindowY = 1.0 / (this.recipViewWindowY * this.aspectRatio);
+
+        var transform = this.matrix;
+
+        var farClip = farPlane || this.farPlane;
+        var nearClip = (nearPlane !== undefined ? nearPlane : this.nearPlane);
+
+        var frustumPoints = points || new Array(8);
+
+        if (!this.parallel) {
+            var co0 = ((transform[0] * viewOffsetX) + (transform[3] * viewOffsetY));
+            var co1 = ((transform[1] * viewOffsetX) + (transform[4] * viewOffsetY));
+            var co2 = ((transform[2] * viewOffsetX) + (transform[5] * viewOffsetY));
+
+            var right0 = (transform[0] * viewWindowX);
+            var right1 = (transform[1] * viewWindowX);
+            var right2 = (transform[2] * viewWindowX);
+            var up0 = (transform[3] * viewWindowY);
+            var up1 = (transform[4] * viewWindowY);
+            var up2 = (transform[5] * viewWindowY);
+            var at0 = (co0 - transform[6]);
+            var at1 = (co1 - transform[7]);
+            var at2 = (co2 - transform[8]);
+            var pos0 = (transform[9] + co0);
+            var pos1 = (transform[10] + co1);
+            var pos2 = (transform[11] + co2);
+
+            var dirTR0 = (at0 + right0 + up0);
+            var dirTR1 = (at1 + right1 + up1);
+            var dirTR2 = (at2 + right2 + up2);
+            var dirTL0 = (at0 - right0 + up0);
+            var dirTL1 = (at1 - right1 + up1);
+            var dirTL2 = (at2 - right2 + up2);
+            var dirBL0 = (at0 - right0 - up0);
+            var dirBL1 = (at1 - right1 - up1);
+            var dirBL2 = (at2 - right2 - up2);
+            var dirBR0 = (at0 + right0 - up0);
+            var dirBR1 = (at1 + right1 - up1);
+            var dirBR2 = (at2 + right2 - up2);
+
+            /* tslint:disable:max-line-length */
+            frustumPoints[0] = md.v3Build((pos0 + (dirTR0 * nearClip)), (pos1 + (dirTR1 * nearClip)), (pos2 + (dirTR2 * nearClip)), frustumPoints[0]);
+            frustumPoints[1] = md.v3Build((pos0 + (dirTL0 * nearClip)), (pos1 + (dirTL1 * nearClip)), (pos2 + (dirTL2 * nearClip)), frustumPoints[1]);
+            frustumPoints[2] = md.v3Build((pos0 + (dirBL0 * nearClip)), (pos1 + (dirBL1 * nearClip)), (pos2 + (dirBL2 * nearClip)), frustumPoints[2]);
+            frustumPoints[3] = md.v3Build((pos0 + (dirBR0 * nearClip)), (pos1 + (dirBR1 * nearClip)), (pos2 + (dirBR2 * nearClip)), frustumPoints[3]);
+            frustumPoints[4] = md.v3Build((pos0 + (dirTR0 * farClip)), (pos1 + (dirTR1 * farClip)), (pos2 + (dirTR2 * farClip)), frustumPoints[4]);
+            frustumPoints[5] = md.v3Build((pos0 + (dirTL0 * farClip)), (pos1 + (dirTL1 * farClip)), (pos2 + (dirTL2 * farClip)), frustumPoints[5]);
+            frustumPoints[6] = md.v3Build((pos0 + (dirBL0 * farClip)), (pos1 + (dirBL1 * farClip)), (pos2 + (dirBL2 * farClip)), frustumPoints[6]);
+            frustumPoints[7] = md.v3Build((pos0 + (dirBR0 * farClip)), (pos1 + (dirBR1 * farClip)), (pos2 + (dirBR2 * farClip)), frustumPoints[7]);
+            /* tslint:enable:max-line-length */
+        } else {
+            var noffsetx = (1.0 - nearClip) * viewOffsetX;
+            var foffsetx = (1.0 - farClip) * viewOffsetX;
+            var noffsety = (1.0 - nearClip) * viewOffsetY;
+            var foffsety = (1.0 - farClip) * viewOffsetY;
+
+            /* tslint:disable:max-line-length */
+            frustumPoints[0] = md.v3Build((viewWindowX + noffsetx), (viewWindowY + noffsety), nearClip, frustumPoints[0]);
+            frustumPoints[1] = md.v3Build((noffsetx - viewWindowX), (viewWindowY + noffsety), nearClip, frustumPoints[1]);
+            frustumPoints[2] = md.v3Build((noffsetx - viewWindowX), (noffsety - viewWindowY), nearClip, frustumPoints[2]);
+            frustumPoints[3] = md.v3Build((viewWindowX + noffsetx), (noffsety - viewWindowY), nearClip, frustumPoints[3]);
+            frustumPoints[4] = md.v3Build((viewWindowX + foffsetx), (viewWindowY + foffsety), farClip, frustumPoints[4]);
+            frustumPoints[5] = md.v3Build((foffsetx - viewWindowX), (viewWindowY + foffsety), farClip, frustumPoints[5]);
+            frustumPoints[6] = md.v3Build((foffsetx - viewWindowX), (foffsety - viewWindowY), farClip, frustumPoints[6]);
+            frustumPoints[7] = md.v3Build((viewWindowX + foffsetx), (foffsety - viewWindowY), farClip, frustumPoints[7]);
+
+            /* tslint:enable:max-line-length */
+            md.m43TransformPoint(transform, frustumPoints[0], frustumPoints[0]);
+            md.m43TransformPoint(transform, frustumPoints[1], frustumPoints[1]);
+            md.m43TransformPoint(transform, frustumPoints[2], frustumPoints[2]);
+            md.m43TransformPoint(transform, frustumPoints[3], frustumPoints[3]);
+            md.m43TransformPoint(transform, frustumPoints[4], frustumPoints[4]);
+            md.m43TransformPoint(transform, frustumPoints[5], frustumPoints[5]);
+            md.m43TransformPoint(transform, frustumPoints[6], frustumPoints[6]);
+            md.m43TransformPoint(transform, frustumPoints[7], frustumPoints[7]);
+        }
+
+        return frustumPoints;
+    };
+
+    Camera.prototype.getFrustumFarPoints = function (farPlane, points) {
+        var md = this.md;
+        var viewOffsetX = this.viewOffsetX;
+        var viewOffsetY = this.viewOffsetY;
+        var viewWindowX = 1.0 / this.recipViewWindowX;
+        var viewWindowY = 1.0 / (this.recipViewWindowY * this.aspectRatio);
+        var transform = this.matrix;
+        var farClip = farPlane || this.farPlane;
+
+        var frustumPoints = points || new Array(4);
+
+        if (!this.parallel) {
+            var t0 = transform[0];
+            var t1 = transform[1];
+            var t2 = transform[2];
+            var t3 = transform[3];
+            var t4 = transform[4];
+            var t5 = transform[5];
+            var t6 = transform[6];
+            var t7 = transform[7];
+            var t8 = transform[8];
+            var t9 = transform[9];
+            var t10 = transform[10];
+            var t11 = transform[11];
+
+            var co0 = ((t0 * viewOffsetX) + (t3 * viewOffsetY));
+            var co1 = ((t1 * viewOffsetX) + (t4 * viewOffsetY));
+            var co2 = ((t2 * viewOffsetX) + (t5 * viewOffsetY));
+
+            var right0 = (t0 * viewWindowX);
+            var right1 = (t1 * viewWindowX);
+            var right2 = (t2 * viewWindowX);
+            var up0 = (t3 * viewWindowY);
+            var up1 = (t4 * viewWindowY);
+            var up2 = (t5 * viewWindowY);
+            var at0 = (co0 - t6);
+            var at1 = (co1 - t7);
+            var at2 = (co2 - t8);
+            var pos0 = (t9 + co0);
+            var pos1 = (t10 + co1);
+            var pos2 = (t11 + co2);
+
+            var dirTR0 = ((at0 + right0 + up0) * farClip);
+            var dirTR1 = ((at1 + right1 + up1) * farClip);
+            var dirTR2 = ((at2 + right2 + up2) * farClip);
+            var dirTL0 = ((at0 - right0 + up0) * farClip);
+            var dirTL1 = ((at1 - right1 + up1) * farClip);
+            var dirTL2 = ((at2 - right2 + up2) * farClip);
+            var dirBL0 = ((at0 - right0 - up0) * farClip);
+            var dirBL1 = ((at1 - right1 - up1) * farClip);
+            var dirBL2 = ((at2 - right2 - up2) * farClip);
+            var dirBR0 = ((at0 + right0 - up0) * farClip);
+            var dirBR1 = ((at1 + right1 - up1) * farClip);
+            var dirBR2 = ((at2 + right2 - up2) * farClip);
+
+            frustumPoints[0] = md.v3Build((pos0 + dirTR0), (pos1 + dirTR1), (pos2 + dirTR2), frustumPoints[0]);
+            frustumPoints[1] = md.v3Build((pos0 + dirTL0), (pos1 + dirTL1), (pos2 + dirTL2), frustumPoints[1]);
+            frustumPoints[2] = md.v3Build((pos0 + dirBL0), (pos1 + dirBL1), (pos2 + dirBL2), frustumPoints[2]);
+            frustumPoints[3] = md.v3Build((pos0 + dirBR0), (pos1 + dirBR1), (pos2 + dirBR2), frustumPoints[3]);
+        } else {
+            var offsetX = (1.0 - farClip) * viewOffsetX;
+            var offsetY = (1.0 - farClip) * viewOffsetY;
+            frustumPoints[0] = md.v3Build((viewWindowX + offsetX), (viewWindowY + offsetY), farClip, frustumPoints[0]);
+            frustumPoints[1] = md.v3Build((offsetX - viewWindowX), (viewWindowY + offsetY), farClip, frustumPoints[1]);
+            frustumPoints[2] = md.v3Build((offsetX - viewWindowX), (offsetY - viewWindowY), farClip, frustumPoints[2]);
+            frustumPoints[3] = md.v3Build((viewWindowX + offsetX), (offsetY - viewWindowY), farClip, frustumPoints[3]);
+            md.m43TransformPoint(transform, frustumPoints[0], frustumPoints[0]);
+            md.m43TransformPoint(transform, frustumPoints[1], frustumPoints[1]);
+            md.m43TransformPoint(transform, frustumPoints[2], frustumPoints[2]);
+            md.m43TransformPoint(transform, frustumPoints[3], frustumPoints[3]);
+        }
+
+        return frustumPoints;
+    };
+
+    Camera.prototype.getFrustumExtents = function (extents, farClip, nearClip) {
+        var frustumPoints = this.getFrustumPoints(farClip, nearClip, this._frustumPoints);
+        var frustumPoint = frustumPoints[0];
+        var min0 = frustumPoint[0];
+        var min1 = frustumPoint[1];
+        var min2 = frustumPoint[2];
+        var max0 = min0;
+        var max1 = min1;
+        var max2 = min2;
+        for (var i = 1; i < 8; i += 1) {
+            frustumPoint = frustumPoints[i];
+            var p0 = frustumPoint[0];
+            var p1 = frustumPoint[1];
+            var p2 = frustumPoint[2];
+            if (min0 > p0) {
+                min0 = p0;
+            } else if (max0 < p0) {
+                max0 = p0;
+            }
+            if (min1 > p1) {
+                min1 = p1;
+            } else if (max1 < p1) {
+                max1 = p1;
+            }
+            if (min2 > p2) {
+                min2 = p2;
+            } else if (max2 < p2) {
+                max2 = p2;
+            }
+        }
+        extents[0] = min0;
+        extents[1] = min1;
+        extents[2] = min2;
+        extents[3] = max0;
+        extents[4] = max1;
+        extents[5] = max2;
+    };
+
+    Camera.prototype.clampAABBToFrustum = function (extents, threshold) {
+        var frustumPlanes = this.frustumPlanes;
+
+        var minGridX = extents[0];
+        var minGridY = extents[1];
+        var minGridZ = extents[2];
+        var maxGridX = extents[3];
+        var maxGridY = extents[4];
+        var maxGridZ = extents[5];
+
+        var abs = Math.abs;
+        var n = 0;
+        do {
+            var plane = frustumPlanes[n];
+            var d0 = plane[0];
+            var d1 = plane[1];
+            var d2 = plane[2];
+            var maxDistance = (d0 * (d0 < 0 ? minGridX : maxGridX) + d1 * (d1 < 0 ? minGridY : maxGridY) + d2 * (d2 < 0 ? minGridZ : maxGridZ) - plane[3]);
+            if (maxDistance < threshold) {
+                return false;
+            } else {
+                if (maxDistance < abs(d0) * (maxGridX - minGridX)) {
+                    if (d0 < 0) {
+                        maxGridX = minGridX - (maxDistance / d0);
+                    } else {
+                        minGridX = maxGridX - (maxDistance / d0);
+                    }
+                }
+                if (maxDistance < abs(d1) * (maxGridY - minGridY)) {
+                    if (d1 < 0) {
+                        maxGridY = minGridY - (maxDistance / d1);
+                    } else {
+                        minGridY = maxGridY - (maxDistance / d1);
+                    }
+                }
+                if (maxDistance < abs(d2) * (maxGridZ - minGridZ)) {
+                    if (d2 < 0) {
+                        maxGridZ = minGridZ - (maxDistance / d2);
+                    } else {
+                        minGridZ = maxGridZ - (maxDistance / d2);
+                    }
+                }
+            }
+            n += 1;
+        } while(n < 6);
+
+        extents[0] = minGridX;
+        extents[1] = minGridY;
+        extents[2] = minGridZ;
+        extents[3] = maxGridX;
+        extents[4] = maxGridY;
+        extents[5] = maxGridZ;
+
+        return true;
+    };
+
+    Camera.create = // Constructor function
+    function (md) {
+        if (!Camera.prototype._tempZAxis) {
+            Camera.prototype._tempZAxis = md.v3BuildZero();
+            Camera.prototype._tempYAxis = md.v3BuildZero();
+            Camera.prototype._tempXAxis = md.v3BuildZero();
+        }
+        return new Camera(md);
+    };
+    Camera.version = 1;
+    return Camera;
+})();
+
+Camera.prototype._frustumPoints = [];
+Camera.prototype._tempZAxis = null;
+Camera.prototype._tempYAxis = null;
+Camera.prototype._tempXAxis = null;
+
+;
+
+var CameraController = (function () {
+    function CameraController() {
+        /* tslint:enable:no-unused-variable */
+        this.rotateSpeed = 2.0;
+        this.maxSpeed = 1;
+        this.mouseRotateFactor = 0.1;
+    }
+    CameraController.prototype.rotate = function (turn, pitch) {
+        var degreestoradians = (Math.PI / 180.0);
+        var md = this.md;
+        var matrix = this.camera.matrix;
+        var pos = md.m43Pos(matrix);
+        md.m43SetPos(matrix, md.v3BuildZero());
+
+        var rotate;
+        if (pitch !== 0.0) {
+            pitch *= this.rotateSpeed * degreestoradians;
+            pitch *= this.mouseRotateFactor;
+
+            var right = md.v3Normalize(md.m43Right(matrix));
+            md.m43SetRight(matrix, right);
+
+            rotate = md.m43FromAxisRotation(right, pitch);
+
+            matrix = md.m43Mul(matrix, rotate);
+        }
+
+        if (turn !== 0.0) {
+            turn *= this.rotateSpeed * degreestoradians;
+            turn *= this.mouseRotateFactor;
+
+            rotate = md.m43FromAxisRotation(md.v3BuildYAxis(), turn);
+
+            matrix = md.m43Mul(matrix, rotate);
+        }
+
+        md.m43SetPos(matrix, pos);
+
+        this.camera.matrix = matrix;
+    };
+
+    CameraController.prototype.translate = function (right, up, forward) {
+        var md = this.md;
+        var matrix = this.camera.matrix;
+        var pos = md.m43Pos(matrix);
+        var speed = this.maxSpeed;
+        pos = md.v3Add4(pos, md.v3ScalarMul(md.m43Right(matrix), (speed * right)), md.v3ScalarMul(md.m43Up(matrix), (speed * up)), md.v3ScalarMul(md.m43At(matrix), -(speed * forward)));
+        md.m43SetPos(matrix, pos);
+    };
+
+    CameraController.prototype.update = function () {
+        var updateMatrix = false;
+
+        if (this.turn !== 0.0 || this.pitch !== 0.0) {
+            updateMatrix = true;
+
+            this.rotate(this.turn, this.pitch);
+
+            this.turn = 0.0;
+            this.pitch = 0.0;
+        }
+
+        if (this.step > 0) {
+            this.forward += this.step;
+        } else if (this.step < 0) {
+            this.backward -= this.step;
+        }
+
+        var right = ((this.right + this.padright) - (this.left + this.padleft));
+        var up = this.up - this.down;
+        var forward = ((this.forward + this.padforward) - (this.backward + this.padbackward));
+        if (right !== 0.0 || up !== 0.0 || forward !== 0.0) {
+            updateMatrix = true;
+
+            this.translate(right, up, forward);
+
+            if (this.step > 0) {
+                this.forward -= this.step;
+                this.step = 0.0;
+            } else if (this.step < 0) {
+                this.backward += this.step;
+                this.step = 0.0;
+            }
+        }
+
+        if (updateMatrix) {
+            this.camera.updateViewMatrix();
+        }
+    };
+
+    CameraController.prototype.attach = function (id) {
+        this.inputDevice = id;
+        id.addEventListener('keydown', this.onkeydown);
+        id.addEventListener('keyup', this.onkeyup);
+        id.addEventListener('mouseup', this.onmouseup);
+        id.addEventListener('mousewheel', this.onmousewheel);
+        id.addEventListener('mousemove', this.onmousemove);
+        id.addEventListener('padmove', this.onpadmove);
+        id.addEventListener('mouselocklost', this.onmouselocklost);
+        id.addEventListener('touchstart', this.ontouchstart);
+        id.addEventListener('touchend', this.ontouchend);
+        id.addEventListener('touchmove', this.ontouchmove);
+    };
+
+    CameraController.prototype.detach = function (id) {
+        id.removeEventListener('keydown', this.onkeydown);
+        id.removeEventListener('keyup', this.onkeyup);
+        id.removeEventListener('mouseup', this.onmouseup);
+        id.removeEventListener('mousewheel', this.onmousewheel);
+        id.removeEventListener('mousemove', this.onmousemove);
+        id.removeEventListener('padmove', this.onpadmove);
+        id.removeEventListener('mouselocklost', this.onmouselocklost);
+        id.removeEventListener('touchstart', this.ontouchstart);
+        id.removeEventListener('touchend', this.ontouchend);
+        id.removeEventListener('touchmove', this.ontouchmove);
+    };
+
+    CameraController.prototype.destroy = function () {
+        if (this.inputDevice) {
+            this.detach(this.inputDevice);
+            this.inputDevice = null;
+        }
+
+        this.camera = null;
+    };
+
+    CameraController.create = function (gd, id, camera, log) {
+        var c = new CameraController();
+
+        c.md = camera.md;
+        c.camera = camera;
+        c.turn = 0.0;
+        c.pitch = 0.0;
+        c.right = 0.0;
+        c.left = 0.0;
+        c.up = 0.0;
+        c.down = 0.0;
+        c.forward = 0.0;
+        c.backward = 0.0;
+        c.step = 0.0;
+        c.padright = 0.0;
+        c.padleft = 0.0;
+        c.padforward = 0.0;
+        c.padbackward = 0.0;
+        c.looktouch = {
+            id: -1,
+            originX: 0,
+            originY: 0
+        };
+        c.movetouch = {
+            id: -1,
+            originX: 0,
+            originY: 0
+        };
+
+        var keyCodes;
+
+        if (id) {
+            keyCodes = id.keyCodes;
+        }
+
+        // keyboard handling
+        var onkeydownFn = function (keynum) {
+            switch (keynum) {
+                case keyCodes.A:
+                case keyCodes.LEFT:
+                case keyCodes.NUMPAD_4:
+                    c.left = 1.0;
+                    break;
+
+                case keyCodes.D:
+                case keyCodes.RIGHT:
+                case keyCodes.NUMPAD_6:
+                    c.right = 1.0;
+                    break;
+
+                case keyCodes.W:
+                case keyCodes.UP:
+                case keyCodes.NUMPAD_8:
+                    c.forward = 1.0;
+                    break;
+
+                case keyCodes.S:
+                case keyCodes.DOWN:
+                case keyCodes.NUMPAD_2:
+                    c.backward = 1.0;
+                    break;
+
+                case keyCodes.E:
+                case keyCodes.NUMPAD_9:
+                    c.up = 1.0;
+                    break;
+
+                case keyCodes.Q:
+                case keyCodes.NUMPAD_7:
+                    c.down = 1.0;
+                    break;
+            }
+        };
+
+        var onkeyupFn = function (keynum) {
+            switch (keynum) {
+                case keyCodes.A:
+                case keyCodes.LEFT:
+                case keyCodes.NUMPAD_4:
+                    c.left = 0.0;
+                    break;
+
+                case keyCodes.D:
+                case keyCodes.RIGHT:
+                case keyCodes.NUMPAD_6:
+                    c.right = 0.0;
+                    break;
+
+                case keyCodes.W:
+                case keyCodes.UP:
+                case keyCodes.NUMPAD_8:
+                    c.forward = 0.0;
+                    break;
+
+                case keyCodes.S:
+                case keyCodes.DOWN:
+                case keyCodes.NUMPAD_2:
+                    c.backward = 0.0;
+                    break;
+
+                case keyCodes.E:
+                case keyCodes.NUMPAD_9:
+                    c.up = 0.0;
+                    break;
+
+                case keyCodes.Q:
+                case keyCodes.NUMPAD_7:
+                    c.down = 0.0;
+                    break;
+
+                case keyCodes.RETURN:
+                    gd.fullscreen = !gd.fullscreen;
+                    break;
+            }
+        };
+
+        if (log) {
+            c.onkeydown = function onkeydownLogFn(keynum) {
+                log.innerHTML += " KeyDown:&nbsp;" + keynum;
+                onkeydownFn(keynum);
+            };
+
+            c.onkeyup = function onkeyupLogFn(keynum) {
+                if (keynum === keyCodes.BACKSPACE) {
+                    log.innerHTML = "";
+                } else {
+                    log.innerHTML += " KeyUp:&nbsp;" + keynum;
+                }
+                onkeyupFn(keynum);
+            };
+        } else {
+            c.onkeydown = onkeydownFn;
+            c.onkeyup = onkeyupFn;
+        }
+
+        // Mouse handling
+        c.onmouseup = function onmouseupFn(/* button, x, y */ ) {
+            if (!id.isLocked()) {
+                id.lockMouse();
+            }
+        };
+
+        c.onmousewheel = function onmousewheelFn(delta) {
+            c.step = delta * 5;
+        };
+
+        c.onmousemove = function onmousemoveFn(deltaX, deltaY) {
+            c.turn += deltaX;
+            c.pitch += deltaY;
+        };
+
+        // Pad handling
+        c.onpadmove = function onpadmoveFn(lX, lY, lZ, rX, rY/*, rZ, dpadState */ ) {
+            c.turn += lX * 10.0;
+            c.pitch += lY * 10.0;
+
+            if (rX >= 0) {
+                c.padright = rX;
+                c.padleft = 0;
+            } else {
+                c.padright = 0;
+                c.padleft = -rX;
+            }
+
+            if (rY >= 0) {
+                c.padforward = rY;
+                c.padbackward = 0.0;
+            } else {
+                c.padforward = 0.0;
+                c.padbackward = -rY;
+            }
+        };
+
+        c.onmouselocklost = function onmouselocklostFn() {
+            id.unlockMouse();
+        };
+
+        c.ontouchstart = function ontouchstartFn(touchEvent) {
+            var changedTouches = touchEvent.changedTouches;
+            var numTouches = changedTouches.length;
+            var t;
+            var halfScreenWidth = gd.width * 0.5;
+            for (t = 0; t < numTouches; t += 1) {
+                var touchId = changedTouches[t].identifier;
+                var touchX = changedTouches[t].positionX;
+                var touchY = changedTouches[t].positionY;
+                if (touchX < halfScreenWidth && c.looktouch.id === -1) {
+                    c.looktouch.id = touchId;
+                    c.looktouch.originX = touchX;
+                    c.looktouch.originY = touchY;
+                } else if (touchX >= halfScreenWidth && c.movetouch.id === -1) {
+                    c.movetouch.id = touchId;
+                    c.movetouch.originX = touchX;
+                    c.movetouch.originY = touchY;
+                }
+            }
+        };
+
+        c.ontouchend = function ontouchendFn(touchEvent) {
+            var changedTouches = touchEvent.changedTouches;
+            var numTouches = changedTouches.length;
+            var t;
+            for (t = 0; t < numTouches; t += 1) {
+                var touchId = changedTouches[t].identifier;
+                if (c.looktouch.id === touchId) {
+                    c.looktouch.id = -1;
+                    c.looktouch.originX = 0;
+                    c.looktouch.originY = 0;
+                    c.turn = 0;
+                    c.pitch = 0;
+                } else if (c.movetouch.id === touchId) {
+                    c.movetouch.id = -1;
+                    c.movetouch.originX = 0;
+                    c.movetouch.originY = 0;
+                    c.left = 0.0;
+                    c.right = 0.0;
+                    c.forward = 0.0;
+                    c.backward = 0.0;
+                }
+            }
+        };
+
+        c.ontouchmove = function ontouchmoveFn(touchEvent) {
+            var changedTouches = touchEvent.changedTouches;
+            var numTouches = changedTouches.length;
+            var deadzone = 16.0;
+            var t;
+            for (t = 0; t < numTouches; t += 1) {
+                var touchId = changedTouches[t].identifier;
+                var touchX = changedTouches[t].positionX;
+                var touchY = changedTouches[t].positionY;
+                if (c.looktouch.id === touchId) {
+                    if (touchX - c.looktouch.originX > deadzone || touchX - c.looktouch.originX < -deadzone) {
+                        c.turn = (touchX - c.looktouch.originX) / deadzone;
+                    } else {
+                        c.turn = 0.0;
+                    }
+                    if (touchY - c.looktouch.originY > deadzone || touchY - c.looktouch.originY < -deadzone) {
+                        c.pitch = (touchY - c.looktouch.originY) / 16.0;
+                    } else {
+                        c.pitch = 0.0;
+                    }
+                } else if (c.movetouch.id === touchId) {
+                    if (touchX - c.movetouch.originX > deadzone) {
+                        c.left = 0.0;
+                        c.right = 1.0;
+                    } else if (touchX - c.movetouch.originX < -deadzone) {
+                        c.left = 1.0;
+                        c.right = 0.0;
+                    } else {
+                        c.left = 0.0;
+                        c.right = 0.0;
+                    }
+                    if (touchY - c.movetouch.originY > deadzone) {
+                        c.forward = 0.0;
+                        c.backward = 1.0;
+                    } else if (touchY - c.movetouch.originY < -deadzone) {
+                        c.forward = 1.0;
+                        c.backward = 0.0;
+                    } else {
+                        c.forward = 0.0;
+                        c.backward = 0.0;
+                    }
+                }
+            }
+        };
+
+        if (id) {
+            c.attach(id);
+        }
+
+        return c;
+    };
+    CameraController.version = 1;
+    return CameraController;
+})();

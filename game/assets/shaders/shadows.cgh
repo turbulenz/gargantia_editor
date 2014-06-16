@@ -1,0 +1,160 @@
+// Copyright (c) 2013 Turbulenz Limited
+#ifndef SHADOWS_CGH
+#define SHADOWS_CGH
+
+//
+// Shadows
+//
+
+struct ShadowState
+{
+    sampler2D texture;
+    float4x4 projection;
+    float4 depth;
+    float4 shadowSize_depthTweak_blurSize_fadeScale;
+};
+
+
+sampler2D shadowMapTexture = sampler_state
+{
+    MinFilter = linear;
+    MagFilter = linear;
+    WrapS = ClampToEdge;
+    WrapT = ClampToEdge;
+};
+
+float4x4 shadowProjection;
+float4 shadowDepth;
+float4 shadowSize_depthTweak_blurSize_fadeScale;
+
+sampler2D shadowMapTexture2 = sampler_state
+{
+    MinFilter = linear;
+    MagFilter = linear;
+    WrapS = ClampToEdge;
+    WrapT = ClampToEdge;
+};
+float4x4 shadowProjection2;
+float4 shadowDepth2;
+float4 shadowSize_depthTweak_blurSize_fadeScale2;
+
+const float over_darkening_factor = 64.0;
+
+
+float4 WorldPointToDevice(float3 wpt, float4x4 vp)
+{
+    return ((wpt.xxxx * vp[0]) + (wpt.yyyy * vp[1]) + (wpt.zzzz * vp[2]) + vp[3]);
+}
+
+float DecodeFloatRGB16(float4 rgba)
+{
+    return dot(rgba.xyz, float3(63488.0 / 65535.0, 2016.0 / 65535.0, 31.0 / 65535.0));
+}
+
+float DecodeFloatRGBA32(float4 rgba)
+{
+    return dot(rgba, float4(1.0, 1.0/255.0, 1.0/65025.0, 1.0/16581375.0));
+}
+
+float log_conv(float x0, float X, float y0, float Y)
+{
+    return (X + log(x0 + (y0 * exp(Y - X))));
+}
+
+
+float FadeAttenuation(float attenuation, float fadeScale)
+{
+    return (1.0 - fadeScale) + (fadeScale * attenuation);
+}
+
+float ApplyShadowAttenuation_32SamplesPD(float3 position, ShadowState shadowState)
+{
+    // Poisson disc using http://www.coderhaus.com/?p=11
+    // Tap locations for unit disc -
+    //reorder taps for early out after the first few
+    const int numTaps = 8;
+    
+    const float2 vTaps[8] = {
+                                   float2(0.04134851, -0.2678675),
+                                   float2(0.7692497, -0.6156035),
+                                   float2( -0.7119791, -0.03320853),
+                                   float2( -0.4373122, -0.7745407),
+                                   float2(-0.01081126, 0.7873302),
+                                   float2( 0.7837929, -0.002963561),
+                                   float2(0.7387634, 0.6611612),
+                                   float2(-0.7518745, 0.5912235)};
+
+    float shadowSize = shadowState.shadowSize_depthTweak_blurSize_fadeScale.x;
+    float depthTweak = shadowState.shadowSize_depthTweak_blurSize_fadeScale.y;
+    float blurSize   = shadowState.shadowSize_depthTweak_blurSize_fadeScale.z;
+    float fadeScale  = shadowState.shadowSize_depthTweak_blurSize_fadeScale.w;
+
+    float3 shadowPosition = WorldPointToDevice(position, shadowState.projection).xyw;
+    float2 shadowSpace = (shadowPosition.xy / shadowPosition.z);
+    float depth = saturate(dot(shadowState.depth, float4(position, 1.0)) - depthTweak);
+    float2 shadowuv = (shadowSpace * 0.5 + 0.5) * shadowSize;
+    float4 shadowAttenuation4 = float4(0.0, 0.0, 0.0, 0.0);
+    float shadowSizeReciprocal = (1.0 / shadowSize);
+    float4 exponent, occlusion4;
+    float sum = 0.0;
+    const int earlyOutIndex = 0 * 4;
+    const float earlyOutTolerance = 0.01;
+    const bool useExponentialShadowMaps = false;
+
+    for (int index = 0; index < numTaps; index += 4)
+    {
+        exponent.x = DecodeFloatRGB16(tex2D(shadowState.texture, (shadowuv + blurSize * vTaps[index]) * shadowSizeReciprocal));
+        exponent.y = DecodeFloatRGB16(tex2D(shadowState.texture, (shadowuv + blurSize * vTaps[index + 1]) * shadowSizeReciprocal));
+        exponent.z = DecodeFloatRGB16(tex2D(shadowState.texture, (shadowuv + blurSize * vTaps[index + 2]) * shadowSizeReciprocal));
+        exponent.w = DecodeFloatRGB16(tex2D(shadowState.texture, (shadowuv + blurSize * vTaps[index + 3]) * shadowSizeReciprocal));
+
+        if (useExponentialShadowMaps)
+        {
+            shadowAttenuation4 += min(exp(over_darkening_factor * (exponent - depth)), 1.01);
+        }
+        else
+        {
+            shadowAttenuation4.x += exponent.x >= depth ? 1.0 : 0.0;
+            shadowAttenuation4.y += exponent.y >= depth ? 1.0 : 0.0;
+            shadowAttenuation4.z += exponent.z >= depth ? 1.0 : 0.0;
+            shadowAttenuation4.w += exponent.w >= depth ? 1.0 : 0.0;
+        }
+
+        //Bail if fully occluded/lit
+        if (index == earlyOutIndex)
+        {
+            sum = shadowAttenuation4.x + shadowAttenuation4.y + shadowAttenuation4.z + shadowAttenuation4.w;
+            if (sum > float(4 + earlyOutIndex) - earlyOutTolerance)
+            {
+                return FadeAttenuation(1.0, fadeScale);
+            }
+            else if (sum < earlyOutTolerance)
+            {
+                return FadeAttenuation(0.0, fadeScale);
+            }
+        }
+    }
+
+    return FadeAttenuation(saturate((shadowAttenuation4.x + shadowAttenuation4.y + shadowAttenuation4.z + shadowAttenuation4.w) * (1.0 / float(numTaps))), fadeScale);
+}
+
+float ApplyShadowAttenuation(float3 position, ShadowState shadowState)
+{
+    return ApplyShadowAttenuation_32SamplesPD(position, shadowState);
+}
+
+
+float ApplyShadowAttenuation0(float3 position)
+{
+    ShadowState shadowState;
+    shadowState.texture = shadowMapTexture;
+    shadowState.projection = shadowProjection;
+    shadowState.depth = shadowDepth;
+    shadowState.shadowSize_depthTweak_blurSize_fadeScale = shadowSize_depthTweak_blurSize_fadeScale;
+    return ApplyShadowAttenuation(position, shadowState);
+}
+
+//
+// End shadows
+//
+#endif

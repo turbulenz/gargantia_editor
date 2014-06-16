@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+  <asset><contributor><author></author><authoring_tool>FBX COLLADA exporter</authoring_tool><comments></comments></contributor><created>2014-04-22T10:09:50Z</created><keywords></keywords><modified>2014-04-22T10:09:50Z</modified><revision></revision><subject></subject><title></title><unit meter="0.010000" name="centimeter"></unit><up_axis>Y_UP</up_axis></asset>
+  <library_images>
+    <image id="file10-image" name="file10"><init_from>/textures/garden_ship.dds</init_from></image>
+  </library_images>
+  <library_materials>
+    <material id="watertank" name="watertank">
+      <instance_effect url="#watertank-fx"/>
+    </material>
+  </library_materials>
+  <library_effects>
+    <effect id="watertank-fx" name="watertank">
+      <profile_COMMON>
+        <technique sid="standard">
+          <phong>
+            <emission>
+              <color sid="emission">0.000000  0.000000 0.000000 1.000000</color>
+            </emission>
+            <ambient>
+              <color sid="ambient">0.000000  0.000000 0.000000 1.000000</color>
+            </ambient>
+            <diffuse>
+              <texture texture="file10-image" texcoord="CHANNEL0">
+                <extra>
+                  <technique profile="MAYA">
+                    <wrapU sid="wrapU0">TRUE</wrapU>
+                    <wrapV sid="wrapV0">TRUE</wrapV>
+                    <blend_mode>NONE</blend_mode>
+                  </technique>
+                </extra>
+              </texture>
+            </diffuse>
+            <specular>
+              <color sid="specular">0.500000  0.500000 0.500000 1.000000</color>
+            </specular>
+            <shininess>
+              <float sid="shininess">300.000000</float>
+            </shininess>
+            <reflective>
+              <color sid="reflective">0.000000  0.000000 0.000000 1.000000</color>
+            </reflective>
+            <reflectivity>
+              <float sid="reflectivity">0.500000</float>
+            </reflectivity>
+            <transparent opaque="RGB_ZERO">
+              <color sid="transparent">0.000000  0.000000 0.000000 1.000000</color>
+            </transparent>
+            <transparency>
+              <float sid="transparency">1.000000</float>
+            </transparency>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_geometries>
+    <geometry id="watertanks-lib" name="watertanksMesh">
+      <mesh>
+        <source id="watertanks-POSITION">
+          <float_array id="watertanks-POSITION-array" count="144">
+-20577.521484 19.393000 302.113525
+-17750.701172 19.393000 302.113525
+-20577.521484 19.393000 -317.688232
+-17750.701172 19.393000 -317.688232
+-18246.351563 19.393000 -587.122498
+-15419.531250 19.393000 -587.122498
+-18246.351563 19.393000 -1206.924316
+-15419.531250 19.393000 -1206.924316
+-16752.914063 19.393000 302.113525
+-13926.094727 19.393000 302.113525
+-16752.914063 19.393000 -317.688232
+-13926.094727 19.393000 -317.688232
+-18223.226563 19.393000 1202.744507
+-15396.406250 19.393000 1202.744507
+-18223.226563 19.393000 582.942749
+-15396.406250 19.393000 582.942749
+-14329.611328 19.393000 1202.744507
+-11502.791016 19.393000 1202.744507
+-14329.611328 19.393000 582.942749
+-11502.791016 19.393000 582.942749
+-14344.982422 19.393000 -553.616455
+-11518.162109 19.393000 -553.616455
+-14344.982422 19.393000 -1173.418213
+-11518.162109 19.393000 -1173.418213
+-11855.854492 19.393000 -1480.788696
+-9029.034180 19.393000 -1480.788696
+-11855.854492 19.393000 -2090.487793
+-9029.034180 19.393000 -2090.487793
+-10454.004883 19.393000 -559.465820
+-7627.184570 19.393000 -559.465820
+-10454.004883 19.393000 -1169.164917
+-7627.184570 19.393000 -1169.164917
+-10432.624023 19.393000 1192.671265
+-7605.803711 19.393000 1192.671265
+-10432.624023 19.393000 582.972046
+-7605.803711 19.393000 582.972046
+-12859.701172 19.393000 295.232513
+-10032.880859 19.393000 295.232513
+-12859.701172 19.393000 -324.569244
+-10032.880859 19.393000 -324.569244
+-11876.583984 19.393000 2102.560303
+-9049.763672 19.393000 2102.560303
+-11876.583984 19.393000 1492.861084
+-9049.763672 19.393000 1492.861084
+-9093.814453 19.393000 333.037231
+-6266.994141 19.393000 333.037231
+-9093.814453 19.393000 -276.661926
+-6266.994141 19.393000 -276.661926
+</float_array>
+          <technique_common>
+            <accessor source="#watertanks-POSITION-array" count="48" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="watertanks-Normal0">
+          <float_array id="watertanks-Normal0-array" count="144">
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+</float_array>
+          <technique_common>
+            <accessor source="#watertanks-Normal0-array" count="48" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="watertanks-UV0">
+          <float_array id="watertanks-UV0-array" count="96">
+0.629155 0.002661
+0.746675 0.002661
+0.629155 0.122582
+0.746675 0.122582
+0.629155 0.002661
+0.746675 0.002661
+0.746675 0.122582
+0.629155 0.122582
+0.629155 0.002661
+0.746675 0.002661
+0.746675 0.122582
+0.629155 0.122582
+0.629155 0.002661
+0.746675 0.002661
+0.746675 0.122582
+0.629155 0.122582
+0.629155 0.002661
+0.746675 0.002661
+0.746675 0.122582
+0.629155 0.122582
+0.629155 0.002661
+0.746675 0.002661
+0.746675 0.122582
+0.629155 0.122582
+0.629155 0.002661
+0.746675 0.002661
+0.746675 0.122582
+0.629155 0.122582
+0.629155 0.002661
+0.746675 0.002661
+0.746675 0.122582
+0.629155 0.122582
+0.629155 0.002661
+0.746675 0.002661
+0.746675 0.122582
+0.629155 0.122582
+0.629155 0.002661
+0.746675 0.002661
+0.746675 0.122582
+0.629155 0.122582
+0.629155 0.002661
+0.746675 0.002661
+0.746675 0.122582
+0.629155 0.122582
+0.629155 0.002661
+0.746675 0.002661
+0.746675 0.122582
+0.629155 0.122582
+</float_array>
+          <technique_common>
+            <accessor source="#watertanks-UV0-array" count="48" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="watertanks-VERTEX">
+          <input semantic="POSITION" source="#watertanks-POSITION"/>
+          <input semantic="NORMAL" source="#watertanks-Normal0"/>
+        </vertices>
+        <triangles count="24" material="watertank"><input semantic="VERTEX" offset="0" source="#watertanks-VERTEX"/><input semantic="TEXCOORD" offset="1" set="0" source="#watertanks-UV0"/><p> 0 0 1 1 3 3 0 0 3 3 2 2 4 4 5 5 7 6 4 4 7 6 6 7 8 8 9 9 11 10 8 8 11 10 10 11 12 12 13 13 15 14 12 12 15 14 14 15 19 18 16 16 17 17 16 16 19 18 18 19 23 22 20 20 21 21 20 20 23 22 22 23 24 24 25 25 27 26 24 24 27 26 26 27 28 28 29 29 31 30 28 28 31 30 30 31 35 34 32 32 33 33 32 32 35 34 34 35 39 38 36 36 37 37 36 36 39 38 38 39 43 42 40 40 41 41 40 40 43 42 42 43 44 44 45 45 47 46 44 44 47 46 46 47</p></triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_visual_scenes>
+    <visual_scene id="watertanks" name="watertanks">
+      <node name="watertanks" id="watertanks" sid="watertanks"><matrix sid="matrix">1.000000 0.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 1.000000</matrix><instance_geometry url="#watertanks-lib"><bind_material><technique_common><instance_material symbol="watertank" target="#watertank"/></technique_common></bind_material></instance_geometry><extra><technique profile="FCOLLADA"><visibility>1.000000</visibility></technique></extra></node>
+      <extra><technique profile="MAX3D"><frame_rate>24.000000</frame_rate></technique><technique profile="FCOLLADA"><start_time>0.041667</start_time><end_time>12.500000</end_time></technique></extra>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#watertanks"></instance_visual_scene>
+  </scene>
+</COLLADA>

@@ -1,0 +1,97 @@
+// Copyright (c) 2014 Turbulenz Limited
+
+float3 cameraRight;
+float3 cameraUp;
+float3 cameraAt;
+//float3 cameraPos;
+//float time;
+
+float3 fogColor;
+float3 skyColor; // 0.0 0.584 0.858
+
+/*
+sampler2D noiseTexture = sampler_state
+{
+    MinFilter = LinearMipMapNearest;
+    MagFilter = Linear;
+    WrapS = Repeat;
+    WrapT = Repeat;
+    MaxAnisotropy = 4;
+};
+*/
+
+//
+// Vertex programs
+//
+void vp_sky(in float2 INPosition : POSITION,
+            out float4 OUTPosition: POSITION,
+            out float3 OUTCameraDirection: TEXCOORD0)
+{
+   OUTPosition = float4(INPosition, 1.0, 1.0);
+   OUTCameraDirection = (cameraAt + (INPosition.x * cameraRight) + (INPosition.y * cameraUp));
+}
+
+//
+// Fragment programs
+//
+float4 fp_sky(float3 CameraDirection : TEXCOORD0) : COLOR
+{
+    if (CameraDirection.y > 0.001)
+    {
+        // Sky
+        // this normalized version can only used for this effect, it distorts depth values
+        float3 normalizedCameraDirection = normalize(CameraDirection);
+        float fogFactor = pow(abs(1.0 - normalizedCameraDirection.y), 4.0);
+
+        /*
+        float skyDepth = (1000.0 + (fogFactor * 9000.0));
+        float3 worldPosition = cameraPos + (normalizedCameraDirection * skyDepth);
+        float2 noisePos1 = float2((worldPosition.x * (1.0 / 80000.0)) - (time * 0.001),
+                                  (worldPosition.z * (1.0 / 80000.0)));
+        float2 noisePos2 = float2((worldPosition.z * (1.0 / 40000.0)),
+                                  (worldPosition.x * (1.0 / 40000.0)) - (time * 0.0005));
+        float2 noisePos3 = float2((worldPosition.z * (1.0 / 20000.0)),
+                                  (worldPosition.x * (1.0 / 20000.0)) - (time * 0.00025));
+        float noise = tex2D(noiseTexture, noisePos1).x +
+                      0.5 * tex2D(noiseTexture, noisePos2).x +
+                      0.25 * tex2D(noiseTexture, noisePos3).x;
+        float noiseFactor = max(noise - 0.8, 0.0);
+
+        float3 backColor = lerp(skyColor, float3(1.0), noiseFactor);
+        */
+
+        float3 backColor = skyColor; //lerp(skyColor, float3(1.0), noiseFactor);
+
+        backColor = lerp(backColor, fogColor, fogFactor);
+
+        return float4(backColor, 0.0);
+    }
+    /*
+    else if (CameraDirection.y < -0.001)
+    {
+        // Water
+        discard;
+    }
+    */
+    else
+    {
+        // Horizon
+        return float4(fogColor, 0.0);
+    }
+}
+
+//
+// Techniques
+//
+technique sky
+{
+    pass
+    {
+        DepthTestEnable = false;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = false;
+        VertexProgram   = compile glslv vp_sky();
+        FragmentProgram = compile glslf fp_sky();
+    }
+}

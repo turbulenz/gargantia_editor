@@ -1,0 +1,320 @@
+// Copyright (c) 2014 Turbulenz Limited
+#include "skinning.cgh"
+#include "uvtransform.cgh"
+
+//
+// Uniform variables
+//
+float4x4 projection;
+float4x3 worldView;
+float3x3 worldViewInverseTranspose;
+
+float2 viewDepth;
+
+float time;
+
+float2 pixelOffset;
+
+sampler2D silhouetteTexture = sampler_state
+{
+    MinFilter = Nearest;
+    MagFilter = Nearest;
+    WrapS = ClampToEdge;
+    WrapT = ClampToEdge;
+};
+
+sampler2D colorTexture = sampler_state
+{
+    MinFilter = Nearest;
+    MagFilter = Nearest;
+    WrapS = ClampToEdge;
+    WrapT = ClampToEdge;
+};
+
+sampler2D shadowMapTexture = sampler_state
+{
+    MinFilter = Linear;
+    MagFilter = Linear;
+    WrapS = ClampToEdge;
+    WrapT = ClampToEdge;
+};
+
+//
+// Utils
+//
+float3 TransformPoint(float3 pt, float4x3 w)
+{
+    return ((pt.xxx * w[0]) + (pt.yyy * w[1]) + (pt.zzz * w[2]) + w[3]);
+}
+
+float4 ViewPointToDevice(float3 wpt, float4x4 vp)
+{
+    return ((wpt.xxxx * vp[0]) + (wpt.yyyy * vp[1]) + (wpt.zzzz * vp[2]) + vp[3]);
+}
+
+float3 TransformNormal(float3 n, float3x3 transform)
+{
+    return ((n.xxx * transform[0]) + (n.yyy * transform[1]) + (n.zzz * transform[2]));
+}
+
+float2 EncodeDepth(float depth)
+{
+    float d = saturate(depth) * 65535.0;
+    float dH = floor(d * (1.0 / 256.0));
+    float dL = (d - (dH * 256.0));
+    return float2(dH * (1.0 / 255.0), dL * (1.0 / 255.0));
+}
+
+float DecodeDepth(float2 hl)
+{
+    return ((hl.x * (256.0 * 255.0 / 65535.0)) + (hl.y * (255.0 / 65535.0)));
+}
+
+float2 EncodeNormal(float3 normal)
+{
+    normal = normalize(normal);
+    float invp = rsqrt(normal.z * 8.0 + 8.0);
+    return ((normal.xy * invp) + 0.5);
+}
+
+float3 DecodeNormal(float2 hl)
+{
+    float2 fenc = hl * 4.0 - 2.0;
+    float f = dot(fenc, fenc);
+    float g = sqrt(1.0 - (f / 4.0));
+    float3 normal;
+    normal.xy = fenc * g;
+    normal.z = 1.0 - (f / 2.0);
+    return normal;
+}
+
+//
+// Vertex programs
+//
+void vp(in float3 INPosition: POSITION,
+        in float3 INNormal: NORMAL,
+        out float4 OUTPosition: POSITION,
+        out float4 OUTNormalDepth: TEXCOORD0)
+{
+    float3 viewPosition = TransformPoint(INPosition, worldView);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTNormalDepth = float4(TransformNormal(INNormal, worldViewInverseTranspose),
+                            viewPosition.z * viewDepth.x + viewDepth.y);
+}
+
+void vp_skinned(in float3 INPosition: POSITION,
+                in float3 INNormal: NORMAL,
+                in float4 INIndices  : BLENDINDICES,
+                in float4 INWeights  : BLENDWEIGHT,
+                out float4 OUTPosition: POSITION,
+                out float4 OUTNormalDepth: TEXCOORD0)
+{
+    float4 skinVectorX, skinVectorY, skinVectorZ;
+    BuildSkinVectors(INIndices, INWeights, skinVectorX, skinVectorY, skinVectorZ);
+
+    float4 skinTempPosition = float4(INPosition, 1.0);
+    float3 localPosition, localNormal;
+    localPosition.x = dot(skinTempPosition, skinVectorX);
+    localPosition.y = dot(skinTempPosition, skinVectorY);
+    localPosition.z = dot(skinTempPosition, skinVectorZ);
+    localNormal.x = dot(INNormal, skinVectorX.xyz);
+    localNormal.y = dot(INNormal, skinVectorY.xyz);
+    localNormal.z = dot(INNormal, skinVectorZ.xyz);
+
+    localNormal = normalize(localNormal);
+
+    float3 viewPosition = TransformPoint(localPosition, worldView);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTNormalDepth = float4(TransformNormal(localNormal, worldViewInverseTranspose),
+                            viewPosition.z * viewDepth.x + viewDepth.y);
+}
+
+void vp_bird(in float3 INPosition: POSITION,
+             in float3 INNormal: NORMAL,
+             out float4 OUTPosition: POSITION,
+             out float4 OUTNormalDepth: TEXCOORD0)
+{
+    float3 position = float3(INPosition.x,
+                             INPosition.y + 4.0 * time * abs(INPosition.x),
+                             INPosition.z);
+    float3 viewPosition = TransformPoint(position, worldView);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTNormalDepth = float4(TransformNormal(INNormal, worldViewInverseTranspose),
+                            viewPosition.z * viewDepth.x + viewDepth.y);
+}
+
+void vp_mix(in float4 INPosition : POSITION,
+            in float2 INUV : TEXCOORD0,
+            out float4 OUTPosition: POSITION,
+            out float2 OUTUV: TEXCOORD0)
+{
+   OUTPosition = INPosition;
+   OUTUV = INUV;
+}
+
+//
+// Fragment programs
+//
+float4 fp_opaque(float4 NormalDepth: TEXCOORD0) : COLOR
+{
+    float3 normal = NormalDepth.xyz;
+    float depth = NormalDepth.w;
+    return float4(EncodeNormal(normal),
+                  EncodeDepth(depth));
+}
+
+float4 fp_mix(float2 UV : TEXCOORD0) : COLOR
+{
+    /*
+    if (UV.x < 0.25 && UV.y > 0.75)
+    {
+        return tex2D(shadowMapTexture, float2(UV.x * 4.0, UV.y * 4.0 - 3.0));
+    }
+    */
+
+    float4 color = tex2D(colorTexture, UV);
+
+    float2 uvR = float2(UV.x + pixelOffset.x, UV.y);
+    float2 uvB = float2(UV.x, UV.y + pixelOffset.y);
+
+    float4 normalDepth = tex2D(silhouetteTexture, UV);
+    float4 normalDepthR = tex2D(silhouetteTexture, uvR);
+    float4 normalDepthB = tex2D(silhouetteTexture, uvB);
+
+    float z = DecodeDepth(normalDepth.zw);
+    float3 normal = DecodeNormal(normalDepth.xy);
+
+    float zR = DecodeDepth(normalDepthR.zw);
+    float3 normalR = DecodeNormal(normalDepthR.xy);
+
+    float zB = DecodeDepth(normalDepthB.zw);
+    float3 normalB = DecodeNormal(normalDepthB.xy);
+
+    float zdR = (1.0 - abs(zR - z));
+    float zdB = (1.0 - abs(zB - z));
+    float zDiff = pow((zdB * zdB) * (zdR * zdR), 8.0);
+    if (zDiff > 0.75)
+    {
+        zDiff = 1.0;
+    }
+
+    float angleDiff = 0.5 * (dot(normalR, normal) + dot(normalB, normal));
+    angleDiff *= angleDiff;
+
+    float borderFactor = min(zDiff, angleDiff);
+
+    if (color.w < 0.8)
+    {
+        if (borderFactor < 0.5)
+        {
+            float4 backColorR = tex2D(colorTexture, uvR);
+            float4 backColorB = tex2D(colorTexture, uvB);
+
+            color.xyz = (color.xyz +
+                         ((backColorR.xyz * float(backColorR.w < 0.8)) +
+                          (backColorB.xyz * float(backColorB.w < 0.8)))) * (1.0 / 3.0);
+        }
+    }
+    else
+    {
+        color.xyz *= borderFactor;
+    }
+
+    return float4(color.xyz, 1.0);
+}
+
+
+//
+// Techniques
+//
+technique rigid
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = true;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        BlendEnable     = false;
+
+        VertexProgram   = compile glslv vp();
+        FragmentProgram = compile glslf fp_opaque();
+    }
+}
+
+technique skinned
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = true;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        BlendEnable     = false;
+
+        VertexProgram   = compile glslv vp_skinned();
+        FragmentProgram = compile glslf fp_opaque();
+    }
+}
+
+technique rigid_nocull
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = true;
+        CullFaceEnable  = false;
+        BlendEnable     = false;
+
+        VertexProgram   = compile glslv vp();
+        FragmentProgram = compile glslf fp_opaque();
+    }
+}
+
+technique skinned_nocull
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = true;
+        CullFaceEnable  = false;
+        BlendEnable     = false;
+
+        VertexProgram   = compile glslv vp_skinned();
+        FragmentProgram = compile glslf fp_opaque();
+    }
+}
+
+technique bird
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = true;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        BlendEnable     = false;
+
+        VertexProgram   = compile glslv vp_bird();
+        FragmentProgram = compile glslf fp_opaque();
+    }
+}
+
+technique mix
+{
+    pass
+    {
+        DepthTestEnable = false;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = false;
+        VertexProgram   = compile glslv vp_mix();
+        FragmentProgram = compile glslf fp_mix();
+    }
+}
+

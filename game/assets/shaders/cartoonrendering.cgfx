@@ -1,0 +1,1179 @@
+// Copyright (c) 2014 Turbulenz Limited
+
+#include "skinning.cgh"
+#include "uvtransform.cgh"
+#include "cascadedshadowmapping.cgh"
+
+//
+// Uniform variables
+//
+float4x4 projection;
+float4x3 worldView;
+float3x3 worldViewInverseTranspose;
+float3x4 viewInverseTranspose;
+
+float3 lightDirection;
+float3 lightColor;
+float3 ambientColor;
+
+float3 fogColor;
+float invCameraFar;
+
+float4 materialColor = {1.0, 1.0, 1.0, 1.0};
+
+float alphaRef = 0.5;
+float lightingScale = 2.0;
+
+float2 worldMinMaxY = {0.0, 1.0};
+
+float time;
+
+float3 foregroundAlbedoScale = {1.0, 0.7, 0.6};
+
+bool foreground;
+
+static const float waterLevel = 0.0;
+static const float SpecularExponent = 32;
+static const float SpecularCoefficient = 0.5;
+
+
+sampler2D diffuse : register(s0) = sampler_state
+{
+    MinFilter = LinearMipMapNearest;
+    MagFilter = Linear;
+    WrapS = Repeat;
+    WrapT = Repeat;
+    MaxAnisotropy = 16;
+};
+
+sampler2D glow_map = sampler_state
+{
+    MinFilter = LinearMipMapNearest;
+    MagFilter = Linear;
+    WrapS = Repeat;
+    WrapT = Repeat;
+};
+
+sampler2D alpha_map = sampler_state
+{
+    MinFilter = LinearMipMapNearest;
+    MagFilter = Linear;
+    WrapS = Repeat;
+    WrapT = Repeat;
+    MaxAnisotropy = 16;
+};
+
+samplerCUBE env_map = sampler_state
+{
+    MinFilter = LinearMipMapNearest;
+    MagFilter = Linear;
+    WrapS = ClampToEdge;
+    WrapT = ClampToEdge;
+    WrapR = ClampToEdge;
+};
+
+sampler2D light_map = sampler_state
+{
+    MinFilter = LinearMipMapNearest;
+    MagFilter = Linear;
+    WrapS = ClampToEdge;
+    WrapT = ClampToEdge;
+};
+
+sampler2D colorTexture = sampler_state
+{
+    MinFilter = Nearest;
+    MagFilter = Nearest;
+    WrapS = ClampToEdge;
+    WrapT = ClampToEdge;
+};
+
+//
+// Utils
+//
+
+float3 LocalPointToView(float3 pt, float4x3 w)
+{
+    return ((pt.xxx * w[0]) + (pt.yyy * w[1]) + (pt.zzz * w[2]) + w[3]);
+}
+
+float4 ViewPointToDevice(float3 wpt, float4x4 vp)
+{
+    return ((wpt.xxxx * vp[0]) + (wpt.yyyy * vp[1]) + (wpt.zzzz * vp[2]) + vp[3]);
+}
+
+float3 LocalNormalToView(float3 n, float3x3 transform)
+{
+    return ((n.xxx * transform[0]) + (n.yyy * transform[1]) + (n.zzz * transform[2]));
+}
+
+float3 ViewNormalToWorld(float3 n, float3x4 transform)
+{
+    return float3(dot(n, transform[0].xyz),
+                  dot(n, transform[1].xyz),
+                  dot(n, transform[2].xyz));
+}
+
+
+float3 lambert_shading(float3 Nn,
+                       float3 viewPosition,
+                       float3 albedo)
+{
+    float3 color;
+    float d = -dot(lightDirection, Nn);
+    if (0.0 < d)
+    {
+        color = (albedo * (lightColor + ambientColor));
+    }
+    else
+    {
+        color = (albedo * ambientColor);
+    }
+
+    float worldPositionY = dot(float4(viewPosition, 1.0), viewInverseTranspose[1]);
+    float fogFactor = sqrt(saturate((-viewPosition.z - worldPositionY) * invCameraFar));
+    return lerp(color, fogColor, fogFactor);
+}
+
+float3 blinn_shading(float3 Nn,
+                     float3 viewPosition,
+                     float3 albedo)
+{
+    float3 color;
+    float d = -dot(lightDirection, Nn);
+    if (foreground)
+    {
+        if (0.0 < d)
+        {
+            float shadowAttenuation = CalculatePCFShadowAttenuation(viewPosition, -0.005);
+            if (shadowAttenuation > 0.4)
+            {
+                float3 Vn = normalize(-viewPosition);
+                float3 Hn = normalize(Vn - lightDirection);
+                float s = pow(saturate(dot(Hn, Nn)), SpecularExponent);
+                float3 specular = (s > 0.75 ? SpecularCoefficient : 0.0) * lightColor;
+                color = (specular + albedo * foregroundAlbedoScale.x);
+            }
+            else
+            {
+                color = (albedo * foregroundAlbedoScale.y);
+            }
+        }
+        else
+        {
+            color = (albedo * foregroundAlbedoScale.z);
+        }
+        return color;
+    }
+    else
+    {
+        if (0.0 < d)
+        {
+            float shadowAttenuation = CalculatePCFShadowAttenuation(viewPosition, -0.005);
+            shadowAttenuation = shadowAttenuation * 0.5 + 0.5;
+            color = (albedo * ((sqrt(d) * shadowAttenuation * lightColor) + ambientColor));
+        }
+        else
+        {
+            color = (albedo * ambientColor);
+        }
+
+        float worldPositionY = dot(float4(viewPosition, 1.0), viewInverseTranspose[1]);
+        float fogFactor = sqrt(saturate((-viewPosition.z - worldPositionY) * invCameraFar));
+        return lerp(color, fogColor, fogFactor);
+    }
+}
+
+float3 blinn_shading_nocull(float3 Nn,
+                            float3 viewPosition,
+                            float3 albedo)
+{
+    float3 color;
+    float d = abs(dot(lightDirection, Nn));
+    if (foreground)
+    {
+        if (0.0 < d)
+        {
+            float shadowAttenuation = CalculatePCFShadowAttenuation(viewPosition, -0.005);
+            if (shadowAttenuation > 0.4)
+            {
+                float3 Vn = normalize(-viewPosition);
+                float3 Hn = normalize(Vn - lightDirection);
+                float s = pow(saturate(dot(Hn, Nn)), SpecularExponent);
+                float3 specular = (s > 0.75 ? SpecularCoefficient : 0.0) * lightColor;
+                color = (specular + albedo * foregroundAlbedoScale.x);
+            }
+            else
+            {
+                color = (albedo * foregroundAlbedoScale.y);
+            }
+        }
+        else
+        {
+            color = (albedo * foregroundAlbedoScale.z);
+        }
+        return color;
+    }
+    else
+    {
+        if (0.0 < d)
+        {
+            float shadowAttenuation = CalculatePCFShadowAttenuation(viewPosition, -0.005);
+            shadowAttenuation = shadowAttenuation * 0.5 + 0.5;
+            color = (albedo * ((sqrt(d) * shadowAttenuation * lightColor) + ambientColor));
+        }
+        else
+        {
+            color = (albedo * ambientColor);
+        }
+
+        float worldPositionY = dot(float4(viewPosition, 1.0), viewInverseTranspose[1]);
+        float fogFactor = sqrt(saturate((-viewPosition.z - worldPositionY) * invCameraFar));
+        return lerp(color, fogColor, fogFactor);
+    }
+
+}
+
+float3 phong_shading(float3 Nn,
+                     float3 viewPosition,
+                     float3 albedo)
+{
+    float3 color;
+    float d = -dot(lightDirection, Nn);
+    if (0.0 < d)
+    {
+        float shadowAttenuation = CalculatePCFShadowAttenuation(viewPosition, -0.005);
+        if (foreground)
+        {
+            if (shadowAttenuation > 0.4)
+            {
+                float3 Vn = normalize(-viewPosition);
+                float3 R = reflect(lightDirection, Nn);
+                float s = pow(saturate(dot(R, Vn)), SpecularExponent);
+                float3 specular = (s > 0.75 ? SpecularCoefficient : 0.0) * lightColor;
+                color = (specular + (albedo * (lightColor + ambientColor)));
+            }
+            else
+            {
+                color = (albedo * ambientColor);
+            }
+        }
+        else
+        {
+            shadowAttenuation = shadowAttenuation * 0.5 + 0.5;
+            color = (albedo * ((sqrt(d) * shadowAttenuation * lightColor) + ambientColor));
+        }
+    }
+    else
+    {
+        color = (albedo * ambientColor);
+    }
+
+    float worldPositionY = dot(float4(viewPosition, 1.0), viewInverseTranspose[1]);
+    float fogFactor = sqrt(saturate((-viewPosition.z - worldPositionY) * invCameraFar));
+    return lerp(color, fogColor, fogFactor);
+}
+
+
+//
+// Vertex programs
+//
+void vp_flat_nolight(in float3 INPosition : POSITION,
+                     out float4 OUTPosition : POSITION)
+{
+    float3 viewPosition = LocalPointToView(INPosition, worldView);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+}
+
+void vp_flat_nolight_skinned(in float3 INPosition : POSITION,
+                             in float4 INIndices  : BLENDINDICES,
+                             in float4 INWeights  : BLENDWEIGHT,
+                             out float4 OUTPosition : POSITION)
+{
+    float3x4 skinMatrix = BuildSkinMatrix(INIndices, INWeights);
+
+    float4 skinTempPosition = float4(INPosition, 1.0);
+    float3 Position;
+    Position.x = dot(skinTempPosition, skinMatrix[0]);
+    Position.y = dot(skinTempPosition, skinMatrix[1]);
+    Position.z = dot(skinTempPosition, skinMatrix[2]);
+
+    float3 viewPosition = LocalPointToView(Position, worldView);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+}
+
+void vp_nolight(in float3 INPosition : POSITION,
+                in float2 INUV       : TEXCOORD0,
+                out float4 OUTPosition : POSITION,
+                out float2 OUTUV       : TEXCOORD0)
+{
+    float3 viewPosition = LocalPointToView(INPosition, worldView);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTUV = TransformUV(INUV);
+}
+
+void vp_nolight_skinned(in float3 INPosition : POSITION,
+                        in float2 INUV       : TEXCOORD0,
+                        in float4 INIndices  : BLENDINDICES,
+                        in float4 INWeights  : BLENDWEIGHT,
+                        out float4 OUTPosition : POSITION,
+                        out float2 OUTUV       : TEXCOORD0)
+{
+    float3x4 skinMatrix = BuildSkinMatrix(INIndices, INWeights);
+
+    float4 skinTempPosition = float4(INPosition, 1.0);
+    float3 Position;
+    Position.x = dot(skinTempPosition, skinMatrix[0]);
+    Position.y = dot(skinTempPosition, skinMatrix[1]);
+    Position.z = dot(skinTempPosition, skinMatrix[2]);
+
+    float3 viewPosition = LocalPointToView(Position, worldView);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTUV = TransformUV(INUV);
+}
+
+void vp_wake(in float3 INPosition : POSITION,
+             in float2 INUV0      : TEXCOORD0,
+             in float2 INUV1      : TEXCOORD1,
+             out float4 OUTPosition : POSITION,
+             out float4 OUTUV       : TEXCOORD0,
+             out float3 OUTViewPosition : TEXCOORD1)
+{
+    float3 viewPosition = LocalPointToView(INPosition, worldView);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTUV.xy = TransformUV(INUV0);
+    OUTUV.zw = INUV1;
+    OUTViewPosition = viewPosition;
+}
+
+void vp_watertank(in float3 INPosition : POSITION,
+                    in float2 INUV       : TEXCOORD0,
+                    out float4 OUTPosition : POSITION,
+                    out float3 OUTUVDepth  : TEXCOORD0)
+{
+    float3 viewPosition = LocalPointToView(INPosition, worldView);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTUVDepth.xy = TransformUV(INUV);
+    OUTUVDepth.z = -viewPosition.z;
+}
+
+void vp_skybox(in float3 INPosition : POSITION,
+               out float4 OUTPosition     : POSITION,
+               out float3 OUTEyeDirection : TEXCOORD0)
+{
+    float3 viewPosition = LocalPointToView(INPosition, worldView);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTEyeDirection = ViewNormalToWorld(viewPosition, viewInverseTranspose);
+}
+
+void vp_glass_env(in float3 INPosition : POSITION,
+                  in float3 INNormal   : NORMAL,
+                  in float2 INUV       : TEXCOORD0,
+                  out float4 OUTPosition     : POSITION,
+                  out float2 OUTUV           : TEXCOORD0,
+                  out float3 OUTNormal       : TEXCOORD1,
+                  out float3 OUTEyeDirection : TEXCOORD2)
+{
+    float3 viewPosition = LocalPointToView(INPosition, worldView);
+    float3 viewNormal = LocalNormalToView(INNormal, worldViewInverseTranspose);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTUV = TransformUV(INUV);
+    OUTNormal = ViewNormalToWorld(viewNormal, viewInverseTranspose);
+    OUTEyeDirection = ViewNormalToWorld(viewPosition, viewInverseTranspose);
+}
+
+void vp_env(in float3 INPosition : POSITION,
+            in float3 INNormal   : NORMAL,
+            out float4 OUTPosition     : POSITION,
+            out float3 OUTNormal       : TEXCOORD0,
+            out float3 OUTEyeDirection : TEXCOORD1)
+{
+    float3 viewPosition = LocalPointToView(INPosition, worldView);
+    float3 viewNormal = LocalNormalToView(INNormal, worldViewInverseTranspose);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTNormal = ViewNormalToWorld(viewNormal, viewInverseTranspose);
+    OUTEyeDirection = ViewNormalToWorld(viewPosition, viewInverseTranspose);
+}
+
+void vp_env_skinned(in float3 INPosition : POSITION,
+                    in float3 INNormal   : NORMAL,
+                    in float4 INIndices  : BLENDINDICES,
+                    in float4 INWeights  : BLENDWEIGHT,
+                    out float4 OUTPosition     : POSITION,
+                    out float3 OUTNormal       : TEXCOORD0,
+                    out float3 OUTEyeDirection : TEXCOORD1)
+{
+    float4 skinVectorX, skinVectorY, skinVectorZ;
+    BuildSkinVectors(INIndices, INWeights, skinVectorX, skinVectorY, skinVectorZ);
+
+    float4 skinTempPosition = float4(INPosition, 1.0);
+    float3 Position, Normal;
+    Position.x = dot(skinTempPosition, skinVectorX);
+    Position.y = dot(skinTempPosition, skinVectorY);
+    Position.z = dot(skinTempPosition, skinVectorZ);
+    Normal.x = dot(INNormal, skinVectorX.xyz);
+    Normal.y = dot(INNormal, skinVectorY.xyz);
+    Normal.z = dot(INNormal, skinVectorZ.xyz);
+    Normal = normalize(Normal);
+
+    float3 viewPosition = LocalPointToView(Position, worldView);
+    float3 viewNormal = LocalNormalToView(Normal, worldViewInverseTranspose);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTNormal = ViewNormalToWorld(viewNormal, viewInverseTranspose);
+    OUTEyeDirection = ViewNormalToWorld(viewPosition, viewInverseTranspose);
+}
+
+void vp_flat(in float3 INPosition : POSITION,
+             in float3 INNormal   : NORMAL,
+             out float4 OUTPosition     : POSITION,
+             out float3 OUTViewNormal   : TEXCOORD0,
+             out float3 OUTViewPosition : TEXCOORD1)
+{
+    float3 viewPosition = LocalPointToView(INPosition, worldView);
+    float3 viewNormal = LocalNormalToView(INNormal, worldViewInverseTranspose);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTViewNormal = viewNormal;
+    OUTViewPosition = viewPosition;
+}
+
+void vp_flat_skinned(in float3 INPosition : POSITION,
+                     in float3 INNormal   : NORMAL,
+                     in float4 INIndices  : BLENDINDICES,
+                     in float4 INWeights  : BLENDWEIGHT,
+                     out float4 OUTPosition     : POSITION,
+                     out float3 OUTViewNormal   : TEXCOORD0,
+                     out float3 OUTViewPosition : TEXCOORD1)
+{
+    float4 skinVectorX, skinVectorY, skinVectorZ;
+    BuildSkinVectors(INIndices, INWeights, skinVectorX, skinVectorY, skinVectorZ);
+
+    float4 skinTempPosition = float4(INPosition, 1.0);
+    float3 Position, Normal;
+    Position.x = dot(skinTempPosition, skinVectorX);
+    Position.y = dot(skinTempPosition, skinVectorY);
+    Position.z = dot(skinTempPosition, skinVectorZ);
+    Normal.x = dot(INNormal, skinVectorX.xyz);
+    Normal.y = dot(INNormal, skinVectorY.xyz);
+    Normal.z = dot(INNormal, skinVectorZ.xyz);
+    Normal = normalize(Normal);
+
+    float3 viewPosition = LocalPointToView(Position, worldView);
+    float3 viewNormal = LocalNormalToView(Normal, worldViewInverseTranspose);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTViewNormal = viewNormal;
+    OUTViewPosition = viewPosition;
+}
+
+void vp_lambert(in float3 INPosition : POSITION,
+                in float3 INNormal   : NORMAL,
+                in float2 INUV       : TEXCOORD0,
+                out float4 OUTPosition : POSITION,
+                out float4 OUTColor    : COLOR,
+                out float2 OUTUV       : TEXCOORD0)
+{
+    float3 viewPosition = LocalPointToView(INPosition, worldView);
+    float3 viewNormal = LocalNormalToView(INNormal, worldViewInverseTranspose);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTColor = float4(lambert_shading(viewNormal, viewPosition, materialColor.xyz), materialColor.w);
+    OUTUV = TransformUV(INUV);
+}
+
+void vp_lambert_skinned(in float3 INPosition : POSITION,
+                        in float3 INNormal   : NORMAL,
+                        in float2 INUV       : TEXCOORD0,
+                        in float4 INIndices  : BLENDINDICES,
+                        in float4 INWeights  : BLENDWEIGHT,
+                        out float4 OUTPosition : POSITION,
+                        out float4 OUTColor    : COLOR,
+                        out float2 OUTUV       : TEXCOORD0)
+{
+    float4 skinVectorX, skinVectorY, skinVectorZ;
+    BuildSkinVectors(INIndices, INWeights, skinVectorX, skinVectorY, skinVectorZ);
+
+    float4 skinTempPosition = float4(INPosition, 1.0);
+    float3 Position, Normal;
+    Position.x = dot(skinTempPosition, skinVectorX);
+    Position.y = dot(skinTempPosition, skinVectorY);
+    Position.z = dot(skinTempPosition, skinVectorZ);
+    Normal.x = dot(INNormal, skinVectorX.xyz);
+    Normal.y = dot(INNormal, skinVectorY.xyz);
+    Normal.z = dot(INNormal, skinVectorZ.xyz);
+    Normal = normalize(Normal);
+
+    float3 viewPosition = LocalPointToView(Position, worldView);
+    float3 viewNormal = LocalNormalToView(Normal, worldViewInverseTranspose);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTColor = float4(lambert_shading(viewNormal, viewPosition, materialColor.xyz), materialColor.w);
+    OUTUV = TransformUV(INUV);
+}
+
+void vp_blinn(in float3 INPosition : POSITION,
+              in float3 INNormal   : NORMAL,
+              in float2 INUV       : TEXCOORD0,
+              out float4 OUTPosition     : POSITION,
+              out float2 OUTUV           : TEXCOORD0,
+              out float3 OUTViewNormal   : TEXCOORD1,
+              out float3 OUTViewPosition : TEXCOORD2)
+{
+    float3 viewPosition = LocalPointToView(INPosition, worldView);
+    float3 viewNormal = LocalNormalToView(INNormal, worldViewInverseTranspose);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTUV = TransformUV(INUV);
+    OUTViewNormal = viewNormal;
+    OUTViewPosition = viewPosition;
+}
+
+void vp_blinn_skinned(in float3 INPosition : POSITION,
+                      in float3 INNormal   : NORMAL,
+                      in float2 INUV       : TEXCOORD0,
+                      in float4 INIndices  : BLENDINDICES,
+                      in float4 INWeights  : BLENDWEIGHT,
+                      out float4 OUTPosition     : POSITION,
+                      out float2 OUTUV           : TEXCOORD0,
+                      out float3 OUTViewNormal   : TEXCOORD1,
+                      out float3 OUTViewPosition : TEXCOORD2)
+{
+    float4 skinVectorX, skinVectorY, skinVectorZ;
+    BuildSkinVectors(INIndices, INWeights, skinVectorX, skinVectorY, skinVectorZ);
+
+    float4 skinTempPosition = float4(INPosition, 1.0);
+    float3 Position, Normal;
+    Position.x = dot(skinTempPosition, skinVectorX);
+    Position.y = dot(skinTempPosition, skinVectorY);
+    Position.z = dot(skinTempPosition, skinVectorZ);
+    Normal.x = dot(INNormal, skinVectorX.xyz);
+    Normal.y = dot(INNormal, skinVectorY.xyz);
+    Normal.z = dot(INNormal, skinVectorZ.xyz);
+    Normal = normalize(Normal);
+
+    float3 viewPosition = LocalPointToView(Position, worldView);
+    float3 viewNormal = LocalNormalToView(Normal, worldViewInverseTranspose);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTUV = TransformUV(INUV);
+    OUTViewNormal = viewNormal;
+    OUTViewPosition = viewPosition;
+}
+
+void vp_glowmap(in float3 INPosition : POSITION,
+                in float2 INUV       : TEXCOORD0,
+                out float4 OUTPosition : POSITION,
+                out float2 OUTUV       : TEXCOORD0)
+{
+    float3 viewPosition = LocalPointToView(INPosition, worldView);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTUV = TransformUV(INUV);
+}
+
+void vp_glowmap_skinned(in float3 INPosition : POSITION,
+                        in float2 INUV       : TEXCOORD0,
+                        in float4 INIndices  : BLENDINDICES,
+                        in float4 INWeights  : BLENDWEIGHT,
+                        out float4 OUTPosition : POSITION,
+                        out float2 OUTUV       : TEXCOORD0)
+{
+    float3x4 skinMatrix = BuildSkinMatrix(INIndices, INWeights);
+
+    float4 skinTempPosition = float4(INPosition, 1.0);
+    float3 Position;
+    Position.x = dot(skinTempPosition, skinMatrix[0]);
+    Position.y = dot(skinTempPosition, skinMatrix[1]);
+    Position.z = dot(skinTempPosition, skinMatrix[2]);
+
+    float3 viewPosition = LocalPointToView(Position, worldView);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTUV = TransformUV(INUV);
+}
+
+void vp_thermal(in float3 INPosition : POSITION,
+                in float2 INUV       : TEXCOORD0,
+                out float4 OUTPosition : POSITION,
+                out float4 OUTColor    : COLOR,
+                out float2 OUTUV       : TEXCOORD0)
+{
+    float3 viewPosition = LocalPointToView(INPosition, worldView);
+    float worldPositionY = dot(float4(viewPosition, 1.0), viewInverseTranspose[1]);
+    OUTColor.xyz = materialColor.xyz * saturate(lightColor + ambientColor);
+    OUTColor.w = 1.0 - abs(worldPositionY - (worldMinMaxY[1] + worldMinMaxY[0]) * 0.5) / ((worldMinMaxY[1] - worldMinMaxY[0]) * 0.5);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTUV = TransformUV(INUV);
+}
+
+void vp_bird(in float3 INPosition : POSITION,
+             in float2 INUV       : TEXCOORD0,
+             out float4 OUTPosition : POSITION,
+             out float2 OUTUV       : TEXCOORD0)
+{
+    float3 position = float3(INPosition.x,
+                             INPosition.y + 4.0 * time * abs(INPosition.x),
+                             INPosition.z);
+    float3 viewPosition = LocalPointToView(position, worldView);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTUV = TransformUV(INUV);
+}
+
+void vp_copy(in float4 INPosition : POSITION,
+             in float2 INUV       : TEXCOORD0,
+             out float4 OUTPosition : POSITION,
+             out float2 OUTUV       : TEXCOORD0)
+{
+    OUTPosition = INPosition;
+    OUTUV = INUV;
+}
+
+//
+// Fragment programs
+//
+float4 fp_flat_nolight() : COLOR
+{
+    return materialColor;
+}
+
+float4 fp_normal(float2 INUV : TEXCOORD0) : COLOR
+{
+    return materialColor * tex2D(diffuse, INUV);
+}
+
+float4 fp_normal_vertexcolor(float4 INColor : COLOR,
+                             float2 INUV    : TEXCOORD0) : COLOR
+{
+    return INColor * tex2D(diffuse, INUV);
+}
+
+float4 fp_premodulatealpha(float2 INUV : TEXCOORD0) : COLOR
+{
+    float4 color = materialColor * tex2D(diffuse, INUV);
+    color.xyz *= materialColor.w;
+    return color;
+}
+
+float4 fp_premodulatealpha_vertexcolor(float4 INColor : COLOR,
+                                       float2 INUV    : TEXCOORD0) : COLOR
+{
+    float4 color = INColor * tex2D(diffuse, INUV);
+    color.xyz *= INColor.w;
+    return color;
+}
+
+float4 fp_separatealpha(float2 INUV : TEXCOORD0) : COLOR
+{
+    float alpha = materialColor.w * tex2D(alpha_map, INUV).a;
+    return materialColor * tex2D(diffuse, INUV) * alpha;
+}
+
+float4 fp_separatealpha_env(float2 INUV           : TEXCOORD0,
+                            float3 INNormal       : TEXCOORD1,
+                            float3 INEyeDirection : TEXCOORD2) : COLOR
+{
+    float alpha = materialColor.w * tex2D(alpha_map, INUV).a;
+    float3 R = reflect(normalize(INEyeDirection), normalize(INNormal));
+    return materialColor * texCUBE(env_map, R) * alpha;
+}
+
+float4 fp_env(float3 INNormal       : TEXCOORD0,
+              float3 INEyeDirection : TEXCOORD1) : COLOR
+{
+    float3 R = reflect(normalize(INEyeDirection), normalize(INNormal));
+    return materialColor.w * materialColor * texCUBE(env_map, R);
+}
+
+float4 fp_wake(float4 INUV : TEXCOORD0,
+               float3 INViewPosition: TEXCOORD1) : COLOR
+{
+    float wakeAlpha = tex2D(diffuse, INUV.xy).g;
+    float4 color = materialColor;
+    float3 lightContribution = min(lightColor, 1.0);
+    color.w *= (wakeAlpha * INUV.w);
+    if (color.w > 0.1)
+    {
+        float shadowAttenuation = CalculateShadowAttenuation(INViewPosition, -0.005);
+        shadowAttenuation = shadowAttenuation * 0.4 + 0.6;
+        lightContribution *= shadowAttenuation;
+    }
+    color.xyz *= (lightContribution + ambientColor);
+    return color;
+}
+
+float4 fp_watertank(float3 INUVDepth : TEXCOORD0) : COLOR
+{
+    float3 color = tex2D(diffuse, INUVDepth.xy).xyz;
+    color *= saturate(ambientColor + lightColor);
+
+    float fogFactor = saturate(INUVDepth.z * invCameraFar);
+    color = lerp(color, fogColor, fogFactor);
+
+    return float4(color, 0.0);
+}
+
+float4 fp_lambert(float4 INColor : COLOR,
+                  float2 INUV    : TEXCOORD0) : COLOR
+{
+    return INColor * tex2D(diffuse, INUV);
+}
+
+float4 fp_flat(float3 INViewNormal  : TEXCOORD0,
+               float3 INViewPosition: TEXCOORD1) : COLOR
+{
+    float3 Nn = normalize(INViewNormal);
+    return float4(blinn_shading(Nn, INViewPosition, materialColor.xyz),
+                  (foreground ? materialColor.w : 0.0));
+}
+
+float4 fp_flat_nocull(float3 INViewNormal  : TEXCOORD0,
+                      float3 INViewPosition: TEXCOORD1) : COLOR
+{
+    float3 Nn = normalize(INViewNormal);
+    return float4(blinn_shading_nocull(Nn, INViewPosition, materialColor.xyz),
+                  (foreground ? materialColor.w : 0.0));
+}
+
+float4 fp_blinn(float2 INUV      : TEXCOORD0,
+                float3 INViewNormal  : TEXCOORD1,
+                float3 INViewPosition: TEXCOORD2) : COLOR
+{
+    float3 Nn = normalize(INViewNormal);
+    float4 diffuseColor = materialColor * tex2D(diffuse, INUV);
+    return float4(blinn_shading(Nn, INViewPosition, diffuseColor.xyz),
+                  (foreground ? diffuseColor.w : 0.0));
+}
+
+float4 fp_phong(float2 INUV      : TEXCOORD0,
+                float3 INViewNormal  : TEXCOORD1,
+                float3 INViewPosition: TEXCOORD2) : COLOR
+{
+    float3 Nn = normalize(INViewNormal);
+    float4 diffuseColor = materialColor * tex2D(diffuse, INUV);
+    return float4(phong_shading(Nn, INViewPosition, diffuseColor.xyz),
+                  (foreground ? diffuseColor.w : 0.0));
+}
+
+float4 fp_glowmap(float2 INUV : TEXCOORD0) : COLOR
+{
+    return float4(materialColor.xyz * tex2D(glow_map, INUV).xyz, float(foreground));
+}
+
+float4 fp_lightmap(float4 INUV : TEXCOORD0) : COLOR
+{
+    float3 diffuseColor = tex2D(diffuse, INUV.xy).xyz;
+    float3 diffContrib = ((lightingScale * tex2D(light_map, INUV.zw).xyz) + ambientColor);
+    return float4(materialColor.xyz * diffuseColor * diffContrib, float(foreground));
+}
+
+float4 fp_skybox(float3 INEyeDirection : TEXCOORD0) : COLOR
+{
+    return float4(texCUBE(env_map, INEyeDirection).xyz, 0.0);
+}
+
+float4 fp_bird(float2 INUV : TEXCOORD0) : COLOR
+{
+    return float4(tex2D(diffuse, INUV).xyz * saturate(ambientColor + lightColor), 0.0);
+}
+
+float4 fp_copy(float2 UV: TEXCOORD0) : COLOR
+{
+    return tex2D(colorTexture, UV);
+}
+
+//
+// Techniques
+//
+technique flat
+{
+    pass p0
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_flat();
+        FragmentProgram = compile latest fp_flat();
+    }
+}
+
+technique flat_skinned
+{
+    pass p0
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_flat_skinned();
+        FragmentProgram = compile latest fp_flat();
+    }
+}
+
+technique flat_nocull
+{
+    pass p0
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_flat();
+        FragmentProgram = compile latest fp_flat_nocull();
+    }
+}
+
+technique flat_skinned_nocull
+{
+    pass p0
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_flat_skinned();
+        FragmentProgram = compile latest fp_flat_nocull();
+    }
+}
+
+technique flat_nolight
+{
+    pass p0
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_flat_nolight();
+        FragmentProgram = compile latest fp_flat_nolight();
+    }
+}
+
+technique flat_nolight_skinned
+{
+    pass p0
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_flat_nolight_skinned();
+        FragmentProgram = compile latest fp_flat_nolight();
+    }
+}
+
+
+technique lambert
+{
+    pass p0
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_lambert();
+        FragmentProgram = compile latest fp_lambert();
+    }
+}
+
+technique lambert_skinned
+{
+    pass p0
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_lambert_skinned();
+        FragmentProgram = compile latest fp_lambert();
+    }
+}
+
+technique blinn
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_blinn();
+        FragmentProgram = compile latest fp_blinn();
+    }
+}
+
+technique blinn_nocull
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_blinn();
+        FragmentProgram = compile latest fp_blinn();
+    }
+}
+
+technique blinn_skinned
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_blinn_skinned();
+        FragmentProgram = compile latest fp_blinn();
+    }
+}
+
+technique blinn_skinned_nocull
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_blinn_skinned();
+        FragmentProgram = compile latest fp_blinn();
+    }
+}
+
+technique phong
+{
+    pass p0
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_blinn();
+        FragmentProgram = compile latest fp_phong();
+    }
+}
+
+technique phong_skinned
+{
+    pass p0
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_blinn_skinned();
+        FragmentProgram = compile latest fp_phong();
+    }
+}
+
+technique add
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        ColorMask       = { 1, 1, 1, 0 };
+        BlendEnable     = true;
+        BlendFunc       = int2(One, One);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_nolight();
+        FragmentProgram = compile latest fp_premodulatealpha();
+    }
+}
+
+technique add_skinned
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        ColorMask       = { 1, 1, 1, 0 };
+        BlendEnable     = true;
+        BlendFunc       = int2(One, One);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_nolight_skinned();
+        FragmentProgram = compile latest fp_premodulatealpha();
+    }
+}
+
+technique blend
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        ColorMask       = { 1, 1, 1, 0 };
+        BlendEnable     = true;
+        BlendFunc       = int2(SrcAlpha, InvSrcAlpha);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_nolight();
+        FragmentProgram = compile latest fp_normal();
+    }
+}
+
+technique blend_skinned
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        ColorMask       = { 1, 1, 1, 0 };
+        BlendEnable     = true;
+        BlendFunc       = int2(SrcAlpha, InvSrcAlpha);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_nolight_skinned();
+        FragmentProgram = compile latest fp_normal();
+    }
+}
+
+technique blend_nocull
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        ColorMask       = { 1, 1, 1, 0 };
+        BlendEnable     = true;
+        BlendFunc       = int2(SrcAlpha, InvSrcAlpha);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_nolight();
+        FragmentProgram = compile latest fp_normal();
+    }
+}
+
+technique thermal
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        ColorMask       = { 1, 1, 1, 0 };
+        BlendEnable     = true;
+        BlendFunc       = int2(SrcAlpha, InvSrcAlpha);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_thermal();
+        FragmentProgram = compile latest fp_lambert();
+    }
+}
+
+technique wake
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        ColorMask       = { 1, 1, 1, 0 };
+        BlendEnable     = true;
+        BlendFunc       = int2(SrcAlpha, InvSrcAlpha);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_wake();
+        FragmentProgram = compile latest fp_wake();
+    }
+}
+
+technique watertank
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_watertank();
+        FragmentProgram = compile latest fp_watertank();
+    }
+}
+
+technique bird
+{
+    pass p0
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = true;
+        CullFace        = Back;
+        BlendEnable     = false;
+
+        VertexProgram   = compile latest vp_bird();
+        FragmentProgram = compile latest fp_bird();
+    }
+}
+
+technique copy
+{
+    pass
+    {
+        DepthTestEnable = false;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = false;
+        VertexProgram   = compile glslv vp_copy();
+        FragmentProgram = compile glslf fp_copy();
+    }
+}

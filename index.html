@@ -1,0 +1,548 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+    <title>
+        Turbulenz
+    </title>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
+    <style type="text/css">
+html, body, div, span, object, iframe, h1, h2, p, a, img, ul, li, fieldset, form, label, legend, table, thead, tbody, tfoot, tr, th, td {
+    border: 0;
+    font-size: 100%;
+    margin: 0;
+    outline: 0;
+    padding: 0;
+    vertical-align: baseline;
+}
+    </style>
+    <!-- block tz_app_header -->
+    
+    <link rel="stylesheet" type="text/css" href="css/base_template.css">
+    <link rel="shortcut icon" href="img/favicon.ico">
+
+    <!-- Dynamic UI -->
+    <!-- jQuery and plugins -->
+    <link rel="Stylesheet" type="text/css"
+          href="dynamicui/lib/jquery-ui/css/ui-lightness/jquery-ui-1.10.4.min.css"/>
+    <link rel="stylesheet" type="text/css"
+          href="dynamicui/lib/jquery-tipTip/tipTip.css">
+    <script type="text/javascript"
+            src="dynamicui/lib/jquery/jquery-2.1.0.min.js"></script>
+    <script type="text/javascript"
+            src="dynamicui/lib/jquery-ui/js/jquery-ui-1.10.4.min.js"></script>
+    <script type="text/javascript"
+            src="dynamicui/lib/jquery-tipTip/jquery.tipTip.js"></script>
+
+    <!-- Kendo UI -->
+    <!--<link rel="stylesheet" type="text/css"
+          href="dynamicui/lib/kendo/kendo.common.min.css">-->
+    <!--<link rel="stylesheet" type="text/css"
+          href="dynamicui/lib/kendo/kendo.default.min.css">-->
+    <script type="text/javascript"
+            src="dynamicui/lib/kendo/kendo.web.min.js"></script>
+
+    <!-- Spectrum colorpicker -->
+    <link rel="stylesheet" type="text/css"
+          href="dynamicui/lib/spectrum/spectrum.css">
+    <link rel="stylesheet" type="text/css"
+          href="dynamicui/lib/spectrum/sp-dark.css">
+    <script type="text/javascript"
+            src="dynamicui/lib/spectrum/spectrum.js"></script>
+
+    <!--Font Awesome -->
+    <link rel="stylesheet" type="text/css"
+          href="dynamicui/lib/font-awesome/css/font-awesome.min.css">
+
+    <!-- FuelUX -->
+    <script type="text/javascript"
+            src="dynamicui/lib/fuelux/loader.min.js"></script>
+
+    <!-- Turbulenz Dynamic UI -->
+    <link rel="stylesheet" type="text/css"
+          href="dynamicui/server/dynamicui.css">
+    <script type="text/javascript"
+            src="dynamicui/server/duiserver.js"></script>
+
+
+    <!-- end tz_app_header -->
+</head>
+<body style="background:#B4B4B4;font:normal normal normal 13px/1.231 Helvetica,Arial,sans-serif;text-shadow:1px 1px #F9F8F8;">
+    <div id="titlebar" style="position:fixed;height:65px;top:0;right:0;left:0;">
+        <strong style="font-size:24px;line-height:64px;margin:16px;">
+            <!-- block tz_app_title_name -->
+            Turbulenz: <a href="http://docs.turbulenz.com" target="_blank">Docs</a> <a href="https://github.com/turbulenz/turbulenz_engine" target="_blank">Engine</a>
+            <!-- end tz_app_title_name -->
+        </strong>
+        <div id="titlelogo"
+             style="float:right;width:27px;height:27px;margin:18px 24px;">
+        </div>
+    </div>
+    <div id="sidebar"
+         style="background:#B4B4B4;position:fixed;width:303px;top:65px;left:0;">
+        <!-- block tz_app_html_controls -->
+        
+<div id="dynamicui" class="dynamicui"></div>
+
+        <!-- end tz_app_html_controls -->
+    </div>
+    <div id="engine" style="background:#939393;position:fixed;top:65px;
+                            bottom:0;right:0;left:303px;
+                            border-left:1px solid #898989;">
+        <!--
+          HTML to create a plugin or canvas instance.
+          Supplied by 'tz_engine_div' variable.
+        -->
+        
+        <canvas id="turbulenz_game_engine_canvas" moz-opaque="true" tabindex="1">
+            Sorry, but your browser does not support WebGL or does not have it
+            enabled.  To get a WebGL-enabled browser, please see:<br/>
+            <a href="http://www.khronos.org/webgl/wiki/Getting_a_WebGL_Implementation" target="_blank">
+                Getting a WebGL Implementation
+            </a>
+        </canvas>
+
+        <script type="text/javascript">
+            var canvasSupported = true;
+            (function()
+            {
+                var contextNames = ["webgl", "experimental-webgl"];
+                var context = null;
+                var canvas = document.createElement('canvas');
+
+                document.body.appendChild(canvas);
+
+                for (var i = 0; i < contextNames.length; i += 1)
+                {
+                    try {
+                        context = canvas.getContext(contextNames[i]);
+                    } catch (e) {}
+
+                    if (context) {
+                        break;
+                    }
+                }
+                if (!context)
+                {
+                    canvasSupported = false;
+                    window.alert("Sorry, but your browser does not support WebGL or does not have it enabled.");
+                }
+
+                document.body.removeChild(canvas);
+            }());
+            var TurbulenzEngine = {};
+        </script>
+    </div>
+
+    <!-- begin 'tz_include_js' variable -->
+    <script type="text/javascript" src="game/jslib/debug.js"></script>
+<script type="text/javascript" src="game/jslib/vmath.js"></script>
+<script type="text/javascript" src="game/jslib/utilities.js"></script>
+<script type="text/javascript" src="game/jslib/aabbtree.js"></script>
+<script type="text/javascript" src="game/jslib/observer.js"></script>
+<script type="text/javascript" src="game/jslib/webgl/mathdevice.js"></script>
+<script type="text/javascript" src="game/jslib/webgl/touchevent.js"></script>
+<script type="text/javascript" src="game/jslib/webgl/soundtarloader.js"></script>
+<script type="text/javascript" src="game/jslib/webgl/sounddevice.js"></script>
+<script type="text/javascript" src="game/jslib/webgl/touch.js"></script>
+<script type="text/javascript" src="game/jslib/webgl/tgaloader.js"></script>
+<script type="text/javascript" src="game/jslib/webgl/networkdevice.js"></script>
+<script type="text/javascript" src="game/jslib/webgl/ddsloader.js"></script>
+<script type="text/javascript" src="game/jslib/webgl/graphicsdevice.js"></script>
+<script type="text/javascript" src="game/jslib/webgl/turbulenzengine.js"></script>
+<script type="text/javascript" src="game/jslib/webgl/tarloader.js"></script>
+<script type="text/javascript" src="game/jslib/webgl/inputdevice.js"></script>
+<script type="text/javascript" src="game/jslib/webgl/physicsdevice.js"></script>
+<script type="text/javascript" src="game/scripts/configdebug.js"></script>
+<script type="text/javascript" src="game/jslib/animation.js"></script>
+<script type="text/javascript" src="game/jslib/animationmanager.js"></script>
+<script type="text/javascript" src="game/jslib/assettracker.js"></script>
+<script type="text/javascript" src="game/jslib/camera.js"></script>
+<script type="text/javascript" src="game/jslib/cascadedshadows.js"></script>
+<script type="text/javascript" src="game/jslib/draw2d.js"></script>
+<script type="text/javascript" src="game/jslib/effectmanager.js"></script>
+<script type="text/javascript" src="game/jslib/geometry.js"></script>
+<script type="text/javascript" src="game/jslib/fontmanager.js"></script>
+<script type="text/javascript" src="game/jslib/indexbuffermanager.js"></script>
+<script type="text/javascript" src="game/jslib/light.js"></script>
+<script type="text/javascript" src="game/jslib/material.js"></script>
+<script type="text/javascript" src="game/jslib/particlesystem.js"></script>
+<script type="text/javascript" src="game/jslib/renderingcommon.js"></script>
+<script type="text/javascript" src="game/jslib/resourceloader.js"></script>
+<script type="text/javascript" src="game/jslib/requesthandler.js"></script>
+<script type="text/javascript" src="game/jslib/scene.js"></script>
+<script type="text/javascript" src="game/jslib/scenenode.js"></script>
+<script type="text/javascript" src="game/jslib/shadermanager.js"></script>
+<script type="text/javascript" src="game/jslib/soundmanager.js"></script>
+<script type="text/javascript" src="game/jslib/texturemanager.js"></script>
+<script type="text/javascript" src="game/jslib/vertexbuffermanager.js"></script>
+<script type="text/javascript" src="game/jslib/services/gamesession.js"></script>
+<script type="text/javascript" src="game/jslib/services/mappingtable.js"></script>
+<script type="text/javascript" src="game/jslib/services/turbulenzbridge.js"></script>
+<script type="text/javascript" src="game/jslib/services/turbulenzservices.js"></script>
+<script type="text/javascript" src="dynamicui/client/duimanager.js"></script>
+<script type="text/javascript" src="game/scripts/block.js"></script>
+<script type="text/javascript" src="game/scripts/blockfactory.js"></script>
+<script type="text/javascript" src="game/scripts/controlleraction.js"></script>
+<script type="text/javascript" src="game/scripts/core.js"></script>
+<script type="text/javascript" src="game/scripts/application.js"></script>
+<script type="text/javascript" src="game/scripts/controller.js"></script>
+<script type="text/javascript" src="game/scripts/debugdraw.js"></script>
+<script type="text/javascript" src="game/scripts/debughelpers.js"></script>
+<script type="text/javascript" src="game/scripts/effectfactory.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponentbase.js"></script>
+<script type="text/javascript" src="game/scripts/entityfactory.js"></script>
+<script type="text/javascript" src="game/scripts/entityhelpers.js"></script>
+<script type="text/javascript" src="game/scripts/eventmanager.js"></script>
+<script type="text/javascript" src="game/scripts/gamecamera.js"></script>
+<script type="text/javascript" src="game/scripts/gameclock.js"></script>
+<script type="text/javascript" src="game/scripts/gameentity.js"></script>
+<script type="text/javascript" src="game/scripts/gamelighting.js"></script>
+<script type="text/javascript" src="game/scripts/gamemanager.js"></script>
+<script type="text/javascript" src="game/scripts/gameparticlemanager.js"></script>
+<script type="text/javascript" src="game/scripts/gamesoundmanager.js"></script>
+<script type="text/javascript" src="game/scripts/gamespace.js"></script>
+<script type="text/javascript" src="game/scripts/gamegrid.js"></script>
+<script type="text/javascript" src="game/scripts/gamegridsquare.js"></script>
+<script type="text/javascript" src="game/scripts/gargloadingscreen.js"></script>
+<script type="text/javascript" src="game/scripts/globals.js"></script>
+<script type="text/javascript" src="game/scripts/scenehelper.js"></script>
+<script type="text/javascript" src="game/scripts/sceneloader.js"></script>
+<script type="text/javascript" src="game/scripts/simpleblendstyle.js"></script>
+<script type="text/javascript" src="game/scripts/simplefonts.js"></script>
+<script type="text/javascript" src="game/scripts/simplesceneloader.js"></script>
+<script type="text/javascript" src="game/scripts/simplesprite.js"></script>
+<script type="text/javascript" src="game/scripts/stringutils.js"></script>
+<script type="text/javascript" src="game/scripts/tween.js"></script>
+<script type="text/javascript" src="game/scripts/utilityhelpers.js"></script>
+<script type="text/javascript" src="game/scripts/vhelpers.js"></script>
+<script type="text/javascript" src="game/scripts/fastmath.js"></script>
+<script type="text/javascript" src="game/scripts/vzoomer.js"></script>
+<script type="text/javascript" src="game/scripts/visualeffect.js"></script>
+<script type="text/javascript" src="game/scripts/worldcube.js"></script>
+<script type="text/javascript" src="game/editor/editor.js"></script>
+<script type="text/javascript" src="game/editor/actions/editoractions.js"></script>
+<script type="text/javascript" src="game/editor/actions/camera/editoractionscamera.js"></script>
+<script type="text/javascript" src="game/editor/actions/manipulation/editoractionsposition.js"></script>
+<script type="text/javascript" src="game/editor/actions/manipulation/editoractionsrotate.js"></script>
+<script type="text/javascript" src="game/editor/actions/manipulation/editoractionsselect.js"></script>
+<script type="text/javascript" src="game/editor/actions/manipulation/editoractionsscale.js"></script>
+<script type="text/javascript" src="game/editor/actions/misc/editoractionsmisc.js"></script>
+<script type="text/javascript" src="game/editor/actions/draw/editoractionsdraw.js"></script>
+<script type="text/javascript" src="game/editor/actions/draw/editoractionsdraw2d.js"></script>
+<script type="text/javascript" src="game/editor/actions/saveload/editoractionssaveload.js"></script>
+<script type="text/javascript" src="game/editor/maths/editormath.js"></script>
+<script type="text/javascript" src="game/editor/editorcameracontroller.js"></script>
+<script type="text/javascript" src="game/editor/editorconditions.js"></script>
+<script type="text/javascript" src="game/editor/editorcontroller.js"></script>
+<script type="text/javascript" src="game/editor/editordraw.js"></script>
+<script type="text/javascript" src="game/editor/editorecuihelpers.js"></script>
+<script type="text/javascript" src="game/editor/editorinput.js"></script>
+<script type="text/javascript" src="game/editor/editorobjectgroup.js"></script>
+<script type="text/javascript" src="game/editor/editorui.js"></script>
+<script type="text/javascript" src="game/scripts/editor/editorsettings.js"></script>
+<script type="text/javascript" src="game/editor/controls/editorcontrols.js"></script>
+<script type="text/javascript" src="game/editor/controls/editorcontrolsdraw.js"></script>
+<script type="text/javascript" src="game/editor/controls/editorcontrolsdraw2d.js"></script>
+<script type="text/javascript" src="game/scripts/editor/controls/editorcontrolsgargantia.js"></script>
+<script type="text/javascript" src="game/scripts/editor/controls/editorcontrolsdrawgargantia.js"></script>
+<script type="text/javascript" src="game/scripts/editor/actions/gargantia/editoractionsgargantia.js"></script>
+<script type="text/javascript" src="game/scripts/level/level.js"></script>
+<script type="text/javascript" src="game/scripts/level/levelparse.js"></script>
+<script type="text/javascript" src="game/scripts/level/levelsaveload.js"></script>
+<script type="text/javascript" src="game/scripts/level/levelserialize.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/levels.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/guicolors.js"></script>
+<script type="text/javascript" src="game/scripts/guibuttons.js"></script>
+<script type="text/javascript" src="game/scripts/guihelper.js"></script>
+<script type="text/javascript" src="game/scripts/guimanager.js"></script>
+<script type="text/javascript" src="game/scripts/guirenderer.js"></script>
+<script type="text/javascript" src="game/scripts/savedata.js"></script>
+<script type="text/javascript" src="game/scripts/eventbroadcast.js"></script>
+<script type="text/javascript" src="game/scripts/gamestates/gamestateeditor.js"></script>
+<script type="text/javascript" src="game/scripts/gamestates/gamestateloading.js"></script>
+<script type="text/javascript" src="game/scripts/gamestates/gamestatemissionend.js"></script>
+<script type="text/javascript" src="game/scripts/gamestates/gamestateplaying.js"></script>
+<script type="text/javascript" src="game/scripts/gamestates/gamestateresetgame.js"></script>
+<script type="text/javascript" src="game/scripts/playstates/playstatebase.js"></script>
+<script type="text/javascript" src="game/scripts/playstates/playstaterings.js"></script>
+<script type="text/javascript" src="game/scripts/playstates/playflags.js"></script>
+<script type="text/javascript" src="game/scripts/birdmanager.js"></script>
+<script type="text/javascript" src="game/scripts/cloudmanager.js"></script>
+<script type="text/javascript" src="game/scripts/collisions.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/ecattach.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/ecbirdspawner.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/ecanimationmanager.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/eccloudspawner.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/ecentityspawner.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/eceffectspawner.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/echero.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/echoop.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/echoopattach.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/echoopspawner.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/eclocomotion.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/ecmesh.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/ecmeshanimation.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/ecphysicscube.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/ecscore.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/ecsockets.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/ecsprite.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/ecthermals.js"></script>
+<script type="text/javascript" src="game/scripts/entitycomponents/ecvolumebox.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/guiarchetypes.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/lights.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/materials.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/water.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/blocks/blocks.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/entities/box.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/entities/birds.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/entities/clouds.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/entities/fleet.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/entities/hoops.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/entities/ledo.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/entities/thermals.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/animations.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/sfxaud.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/sfxpfx.js"></script>
+<script type="text/javascript" src="game/scripts/archetypes/sfx.js"></script>
+<script type="text/javascript" src="game/scripts/cartoonrendering.js"></script>
+<script type="text/javascript" src="game/scripts/simplex-noise.js"></script>
+<script type="text/javascript" src="game/jslib/capturegraphicsdevice.js"></script>
+<script type="text/javascript" src="game/jslib/scenedebugging.js"></script>
+<script type="text/javascript" src="game/scripts/debug/webgl-debug.js"></script>
+    <!-- end 'tz_include_js' variable -->
+
+    <script type="text/javascript">
+      // ----------------------------------------
+      // Embedded code and startup code.
+      // Supplied by 'tz_startup_code' variable.
+      // ----------------------------------------
+      
+/*{ core editor files #}*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*global Application: false*/
+/*global TurbulenzEngine: false*/
+TurbulenzEngine.onload = function onloadFn()
+{
+
+	var canvas = document.getElementById('turbulenz_game_engine_canvas');
+	// canvas.width = 1080;
+	// canvas.height = 608;
+
+
+    var application = Application.create();
+
+    TurbulenzEngine.onunload = function onUnloadFn()
+    {
+        application.shutdown();
+    };
+
+    application.init();
+};
+
+        // Engine startup
+        window.onload = function ()
+        {
+            var appEntry = TurbulenzEngine.onload;
+            var appShutdown = TurbulenzEngine.onunload;
+            if (!appEntry) {
+                window.alert("TurbulenzEngine.onload has not been set");
+                return;
+            }
+
+            var canvas =
+                document.getElementById('turbulenz_game_engine_canvas');
+
+            var startCanvas = function startCanvasFn()
+            {
+                if (canvas.getContext && canvasSupported)
+                {
+                    TurbulenzEngine = WebGLTurbulenzEngine.create({
+                        canvas: canvas,
+                        fillParent: true
+                    });
+
+                    if (!TurbulenzEngine) {
+                        window.alert("Failed to init TurbulenzEngine (canvas)");
+                        return;
+                    }
+
+                    TurbulenzEngine.onload = appEntry;
+                    TurbulenzEngine.onunload = appShutdown;
+                    appEntry()
+                }
+            }
+
+            var previousOnBeforeUnload = window.onbeforeunload;
+            window.onbeforeunload = function ()
+            {
+                if (TurbulenzEngine.onunload) {
+                    TurbulenzEngine.onunload.call(this);
+                }
+            };  // window.beforeunload
+
+            startCanvas();
+        };  // window.onload()
+
+    </script>
+
+</body>
+</html>_game_engine_canvas');
+
+            var startCanvas = function startCanvasFn()
+            {
+                if (canvas.getContext && canvasSupported)
+                {
+                    TurbulenzEngine = WebGLTurbulenzEngine.create({
+                        canvas: canvas,
+                        fillParent: true
+                    });
+
+                    if (!TurbulenzEngine) {
+                        window.alert("Failed to init TurbulenzEngine (canvas)");
+                        return;
+                    }
+
+                    TurbulenzEngine.onload = appEntry;
+                    TurbulenzEngine.onunload = appShutdown;
+                    appEntry()
+                }
+            }
+
+            var previousOnBeforeUnload = window.onbeforeunload;
+            window.onbeforeunload = function ()
+            {
+                if (TurbulenzEngine.onunload) {
+                    TurbulenzEngine.onunload.call(this);
+                }
+            };  // window.beforeunload
+
+            startCanvas();
+        };  // window.onload()
+
+    </script>
+
+</body>
+</html>

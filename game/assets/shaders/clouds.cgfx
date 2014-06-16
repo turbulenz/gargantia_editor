@@ -1,0 +1,316 @@
+// Copyright (c) 2014 Turbulenz Limited
+
+// Cloud rendering
+// ----------------
+// static
+float4 elementUVRectangle[8];
+float  elementBaseAlpha  [8];
+float3 cloudCenterOffset;
+float3 cloudHalfExtents;
+float3 clusterCenterOffset[8];
+float3 clusterHalfExtents [8];
+float  cloudDistance;
+
+sampler2D diffuse = sampler_state
+{
+    MinFilter = LinearMipMapNearest;
+    MagFilter = Linear;
+    WrapS     = ClampToEdge;
+    WrapT     = ClampToEdge;
+};
+
+sampler2D gradientDiffuse = sampler_state
+{
+    MinFilter = LinearMipMapNearest;
+    MagFilter = Linear;
+    WrapS     = Wrap;
+    WrapT     = Wrap;
+};
+
+sampler2D distantGradientDiffuse = sampler_state
+{
+    MinFilter = LinearMipMapNearest;
+    MagFilter = Linear;
+    WrapS     = Wrap;
+    WrapT     = Wrap;
+};
+
+// varying
+float3 cameraPosition;
+float3 cloudPosition;
+float3 billboardDirection;
+
+// Cloud imposter rendering
+// -------------------------
+// static
+float4 imposterUVRect;
+
+sampler2D imposter = sampler_state
+{
+    MinFilter = Nearest;
+    MagFilter = Linear;
+    WrapS     = ClampToEdge;
+    WrapT     = ClampToEdge;
+};
+
+// varying
+float3 imposterOffset;
+
+// Shared
+// -------
+float4x4 viewProjection;
+
+float2 quadVertex[4] = {float2(-1, -1), float2(1, -1), float2(1, 1), float2(-1, 1)};
+float2 quadUV    [4] = {float2(0, 1), float2(1, 1), float2(1, 0), float2(0, 0)};
+void vp_clouds(in  float4 InPositionRotation : POSITION,
+               in  float  InScale            : COLOR,
+               in  float3 InIndices          : TEXCOORD0,
+               out float4 OutPosition        : POSITION,
+               out float3 OutPositionCopy    : TEXCOORD2,
+               out float2 OutUV              : TEXCOORD0,
+               out float4 OutGradient        : TEXCOORD1,
+               out float  OutAlpha           : TEXCOORD3)
+{
+    float2 vertex2D           = quadVertex         [InIndices.x];
+    float2 vertexUV           = quadUV             [InIndices.x];
+
+    float3 clusterCenter      = clusterCenterOffset[InIndices.y];
+    float3 clusterExtents     = clusterHalfExtents [InIndices.y];
+
+    float4 uvRectangle        = elementUVRectangle [InIndices.z];
+    float  baseAlpha          = elementBaseAlpha   [InIndices.z];
+
+    float3 spritePosition = cloudPosition + InPositionRotation.xyz;
+    float  spriteRotation = InPositionRotation.w;
+
+    float3 billboardRight = normalize(float3(-billboardDirection.z, 0, billboardDirection.x)) * InScale * 0.5;
+    float3 billboardUp    = normalize(cross(billboardRight, billboardDirection)) * InScale * 0.5;
+
+    // Rotate billboard up/right around billboard direction by sprite rotation.
+    float sValue = sin(spriteRotation);
+    float cValue = cos(spriteRotation);
+    float tValue = 1 - cValue;
+    float3 t = tValue * billboardDirection;
+    float3 s = sValue * billboardDirection;
+    float3x3 rotation = float3x3(
+        t.x * billboardDirection + float3(cValue, -s.z, s.y),
+        t.y * billboardDirection + float3(s.z, cValue, -s.x),
+        t.z * billboardDirection + float3(-s.y, s.x, cValue)
+    );
+    billboardUp    = mul(rotation, billboardUp);
+    billboardRight = mul(rotation, billboardRight);
+
+    float3 vertexPosition =
+        spritePosition +
+        vertex2D.x * billboardRight +
+        vertex2D.y * billboardUp;
+    OutPosition = mul(float4(vertexPosition, 1), viewProjection);
+
+    OutUV       = uvRectangle.xy + (uvRectangle.zw - uvRectangle.xy) * vertexUV;
+    OutAlpha    = baseAlpha;
+
+    OutGradient = float4(
+        cloudPosition.y - cloudHalfExtents.y,
+        0.5 / cloudHalfExtents.y,
+        cloudPosition.y + clusterCenter.y - clusterExtents.y,
+        0.5 / clusterExtents.y
+    );
+
+    OutPositionCopy = vertexPosition;
+}
+
+float4 fp_clouds(/*in float4 wpos    : WPOS,*/
+                 in float3 position: TEXCOORD2,
+                 in float2 uv      : TEXCOORD0,
+                 in float4 gradient: TEXCOORD1,
+                 in float  alpha   : TEXCOORD3) : COLOR
+{
+    float cloudFade = tex2D(diffuse, uv).y;
+
+    float cloudAlpha1 = tex2D(diffuse, uv * 0.25).y;
+    float cloudAlpha2 = tex2D(diffuse, uv * 1.25).y;
+
+    float basey = position.y + 32.0 * (cloudFade - 0.5);
+
+    float py = basey - 32.0 * (cloudAlpha1 - 0.5);
+    float v1 = 0.35 * saturate((py - gradient.x) * gradient.y) +
+               0.65 * saturate((py - gradient.z) * gradient.w);
+
+    py = basey - 32.0 * (cloudAlpha2 - 0.5);
+    float v2 = 0.35 * saturate((py - gradient.x) * gradient.y) +
+               0.65 * saturate((py - gradient.z) * gradient.w);
+
+    float fade = saturate(dot(billboardDirection, position - cameraPosition) * (1.0 / 50.0));
+    fade *= smoothstep(0.0, 128.0, py);
+
+    alpha *= (cloudFade * cloudFade) * fade;
+    if (alpha < 0.004)
+    {
+        discard;
+    }
+
+    //float znear = saturate(1 - (wpos.z / wpos.w / 7000));
+    float3 modulate1 = lerp(tex2D(distantGradientDiffuse, float2(v1, uv.x)).xyz, tex2D(gradientDiffuse, float2(v1, uv.x)).xyz, cloudDistance);
+    float3 modulate2 = lerp(tex2D(distantGradientDiffuse, float2(v2, uv.x)).xyz, tex2D(gradientDiffuse, float2(v2, uv.x)).xyz, cloudDistance);
+
+    // pre-mutliplied alpha
+    return float4(lerp(modulate1, modulate2, 0.2) * alpha, alpha);
+}
+
+technique clouds
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = true;
+        BlendFunc       = int2(One, InvSrcAlpha);
+
+        VertexProgram   = compile latest vp_clouds();
+        FragmentProgram = compile latest fp_clouds();
+    }
+}
+
+
+void vp_far_clouds(in  float4 InPositionRotation : POSITION,
+                   in  float  InScale            : COLOR,
+                   in  float3 InIndices          : TEXCOORD0,
+                   out float4 OutPosition        : POSITION,
+                   out float3 OutPositionCopy    : TEXCOORD2,
+                   out float2 OutUV              : TEXCOORD0,
+                   out float4 OutGradient        : TEXCOORD1,
+                   out float  OutAlpha           : TEXCOORD3)
+{
+    float2 vertex2D           = quadVertex         [InIndices.x];
+    float2 vertexUV           = quadUV             [InIndices.x];
+
+    float3 clusterCenter      = clusterCenterOffset[InIndices.y];
+    float3 clusterExtents     = clusterHalfExtents [InIndices.y];
+
+    float4 uvRectangle        = elementUVRectangle [InIndices.z];
+    float  baseAlpha          = elementBaseAlpha   [InIndices.z];
+
+    float3 spritePosition = cloudPosition + InPositionRotation.xyz;
+    float  spriteRotation = InPositionRotation.w;
+
+    float3 billboardUp    = float3(0, 1, 0) * InScale * 0.5;
+    float3 billboardRight = normalize(float3(-billboardDirection.z, 0, billboardDirection.x)) * InScale * 0.5;
+    // TODO up should be direction cross right???
+
+    // Rotate billboard up/right around billboard direction by sprite rotation.
+    float sValue = sin(spriteRotation);
+    float cValue = cos(spriteRotation);
+    float tValue = 1 - cValue;
+    float3 t = tValue * billboardDirection;
+    float3 s = sValue * billboardDirection;
+    float3x3 rotation = float3x3(
+        t.x * billboardDirection + float3(cValue, -s.z, s.y),
+        t.y * billboardDirection + float3(s.z, cValue, -s.x),
+        t.z * billboardDirection + float3(-s.y, s.x, cValue)
+    );
+    billboardUp    = mul(rotation, billboardUp);
+    billboardRight = mul(rotation, billboardRight);
+
+    float3 vertexPosition =
+        spritePosition +
+        vertex2D.x * billboardRight +
+        vertex2D.y * billboardUp;
+    OutPosition = mul(float4(vertexPosition, 1), viewProjection);
+
+    OutUV       = uvRectangle.xy + (uvRectangle.zw - uvRectangle.xy) * vertexUV;
+    OutAlpha    = baseAlpha;
+
+    OutGradient = float4(
+        cloudPosition.y - cloudHalfExtents.y,
+        0.5 / cloudHalfExtents.y,
+        cloudPosition.y + clusterCenter.y - clusterExtents.y,
+        0.5 / clusterExtents.y
+    );
+
+    OutPositionCopy = vertexPosition;
+    OutPosition.z = OutPosition.w;
+}
+
+technique clouds_far
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = true;
+        BlendFunc       = int2(One, InvSrcAlpha);
+
+        VertexProgram   = compile latest vp_far_clouds();
+        FragmentProgram = compile latest fp_clouds();
+    }
+}
+
+
+void vp_clouds_imposter(in  float3 InPosition  : POSITION,
+                        in  float2 InUV        : TEXCOORD0,
+                        out float4 OutPosition : POSITION,
+                        out float2 OutUV       : TEXCOORD0)
+{
+    OutPosition = mul(float4(InPosition + imposterOffset, 1), viewProjection);
+    OutUV       = imposterUVRect.xy + InUV * imposterUVRect.zw;
+}
+
+float4 fp_clouds_imposter(in float2 uv: TEXCOORD0) : COLOR
+{
+    float4 color = tex2D(imposter, uv);
+    if (color.w < 0.004)
+    {
+        discard;
+    }
+    return color;
+}
+
+technique clouds_imposter
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        ColorMask       = { 1, 1, 1, 0 };
+        BlendEnable     = true;
+        BlendFunc       = int2(One, InvSrcAlpha);
+
+        VertexProgram   = compile latest vp_clouds_imposter();
+        FragmentProgram = compile latest fp_clouds_imposter();
+    }
+}
+
+
+void vp_clouds_far_imposter(in  float3 InPosition  : POSITION,
+                            in  float2 InUV        : TEXCOORD0,
+                            out float4 OutPosition : POSITION,
+                            out float2 OutUV       : TEXCOORD0)
+{
+    OutPosition = mul(float4(InPosition + imposterOffset, 1), viewProjection);
+    OutUV       = imposterUVRect.xy + InUV * imposterUVRect.zw;
+    // Move to far-plane.
+    OutPosition.z = OutPosition.w;
+}
+
+technique clouds_far_imposter
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        ColorMask       = { 1, 1, 1, 0 };
+        BlendEnable     = true;
+        BlendFunc       = int2(One, InvSrcAlpha);
+
+        VertexProgram   = compile latest vp_clouds_far_imposter();
+        FragmentProgram = compile latest fp_clouds_imposter();
+    }
+}

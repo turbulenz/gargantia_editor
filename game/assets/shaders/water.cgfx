@@ -1,0 +1,163 @@
+// Copyright (c) 2014 Turbulenz Limited
+#include "cascadedshadowmapping.cgh"
+
+//
+// Uniform variables
+//
+float4x4 projection;
+float4x3 worldView;
+float3x3 worldViewInverseTranspose;
+
+float3 fogColor;
+float invCameraFar;
+
+float3 waterColorBright = float3(0.251, 0.878, 0.515);
+float3 waterColorDark = float3(0.1, 0.3, 0.4);
+float waterGain = 0.7;
+float waterSpecularPower = 2.0;
+float waterSpecularScale = 0.8;
+float3 glowColor = float3(0.0, 1.0, 1.0);
+float3 trailColor = float3(0.0, 0.0, 0.0);
+
+
+sampler2D noiseTexture = sampler_state
+{
+    MinFilter = LinearMipMapNearest;
+    MagFilter = Linear;
+    WrapS = Repeat;
+    WrapT = Repeat;
+    MaxAnisotropy = 4;
+};
+
+sampler2D energytrailTexture = sampler_state
+{
+    MinFilter = LinearMipMapNearest;
+    MagFilter = Linear;
+    WrapS = ClampToEdge;
+    WrapT = Repeat;
+};
+
+//
+// Utils
+//
+float3 LocalPointToView(float3 pt, float4x3 w)
+{
+    return ((pt.xxx * w[0]) + (pt.yyy * w[1]) + (pt.zzz * w[2]) + w[3]);
+}
+
+float4 ViewPointToDevice(float3 wpt, float4x4 vp)
+{
+    return ((wpt.xxxx * vp[0]) + (wpt.yyyy * vp[1]) + (wpt.zzzz * vp[2]) + vp[3]);
+}
+
+float3 LocalNormalToView(float3 n, float3x3 transform)
+{
+    return ((n.xxx * transform[0]) + (n.yyy * transform[1]) + (n.zzz * transform[2]));
+}
+
+//
+// Vertex programs
+//
+void vp(in float2 INPosition: POSITION,
+        in float2 INUV0: TEXCOORD0,
+        in float2 INUV1: TEXCOORD1,
+        in float2 INUV2: TEXCOORD2,
+        out float4 OUTPosition: POSITION,
+        out float2 OUTUV0: TEXCOORD0,
+        out float2 OUTUV1: TEXCOORD1,
+        out float2 OUTUV2: TEXCOORD2,
+        out float3 OUTViewPosition: TEXCOORD3)
+{
+    float3 position = float3(INPosition.x, 0.0, INPosition.y);
+    float3 viewPosition = LocalPointToView(position, worldView);
+    OUTPosition = ViewPointToDevice(viewPosition, projection);
+    OUTUV0 = INUV0;
+    OUTUV1 = INUV1;
+    OUTUV2 = INUV2;
+    OUTViewPosition = viewPosition;
+}
+
+//
+// Fragment programs
+//
+float WaterHeight(float2 pos1, float2 pos2, float2 pos3)
+{
+    float noise1 = 2.0 * tex2D(noiseTexture, pos1).x - 1.0;
+    float noise2 = 2.0 * tex2D(noiseTexture, pos2).x - 1.0;
+    float noise3 = 2.0 * tex2D(noiseTexture, pos3).x - 1.0;
+    return (waterGain * noise1 +
+            (waterGain * waterGain) * noise2 +
+            (waterGain * waterGain * waterGain) * noise3);
+}
+
+
+float4 fp(float2 INUV0: TEXCOORD0,
+          float2 INUV1: TEXCOORD1,
+          float2 INUV2: TEXCOORD2,
+          float3 INViewPosition: TEXCOORD3) : COLOR
+{
+    float fogFactor = saturate(-INViewPosition.z * invCameraFar);
+
+    float waterHeight = 0.5 * WaterHeight(INUV0, INUV1, INUV2) + 0.5;
+
+    const float pixelOffset = 1.0 / 1024.0;
+    float2 offL = float2(-pixelOffset, 0.0);
+    float2 offT = float2(0.0, -pixelOffset);
+    float2 offR = float2(pixelOffset, 0.0);
+    float2 offB = float2(0.0, pixelOffset);
+    float3 normal = float3(WaterHeight(INUV0 + offL, INUV1 + offL, INUV2 + offL) -
+                           WaterHeight(INUV0 + offR, INUV1 + offR, INUV2 + offR),
+                           0.1,
+                           WaterHeight(INUV0 + offT, INUV1 + offT, INUV2 + offT) -
+                           WaterHeight(INUV0 + offB, INUV1 + offB, INUV2 + offB));
+    normal = normalize(normal);
+    normal = LocalNormalToView(normal, worldViewInverseTranspose);
+
+    float3 waterPosition = INViewPosition;
+    waterPosition += normal * (2.0 * waterHeight - 2.0);
+
+    const float3 lightDirection = float3(0.0, -1.0, 0.0);
+
+    float3 v = float3(1.0, 0.0, 0.0);
+    float3 r = reflect(lightDirection, normal);
+    float s = waterSpecularScale * pow(saturate(dot(v, r)), waterSpecularPower);
+
+    float d = 0.5 * (-dot(normal, lightDirection) + 0.5);
+    d = lerp((waterHeight * d), 0.0, (fogFactor * fogFactor));
+
+    float shadowAttenuation = CalculateShadowAttenuation(waterPosition, 0.0);
+    s *= shadowAttenuation;
+    d -= (0.2 - (shadowAttenuation * 0.2));
+
+    float3 backColor = ((s + waterColorBright) * d) + waterColorDark;
+
+    float2 energytrailUV = float2((INUV0.y * 0.6) + 0.5, (INUV0.x * 0.05));
+    if (0.0 < energytrailUV.x && energytrailUV.x < 1.0)
+    {
+        float energytrailAlpha = tex2D(energytrailTexture, energytrailUV).g;
+        backColor = lerp(backColor, trailColor, energytrailAlpha * 0.8);
+        backColor += glowColor * pow(waterHeight, 8.0) * energytrailAlpha;
+    }
+
+    backColor = lerp(backColor, fogColor, fogFactor);
+
+    return float4(backColor, 0.0);
+}
+
+//
+// Techniques
+//
+technique water
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = true;
+        CullFaceEnable  = false;
+        BlendEnable     = false;
+        VertexProgram   = compile glslv vp();
+        FragmentProgram = compile glslf fp();
+    }
+}
+

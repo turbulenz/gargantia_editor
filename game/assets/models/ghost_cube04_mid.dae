@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+  <asset><contributor><author></author><authoring_tool>FBX COLLADA exporter</authoring_tool><comments></comments></contributor><created>2013-08-01T08:46:43Z</created><keywords></keywords><modified>2013-08-01T08:46:43Z</modified><revision></revision><subject></subject><title></title><unit meter="1.000000" name="centimeter"></unit><up_axis>Y_UP</up_axis></asset>
+  <library_images>
+    <image id="temp1_file3-image" name="temp1_file3"><init_from>textures/ghost_colorswatches.dds</init_from></image>
+  </library_images>
+  <library_materials>
+    <material id="ghosts_blend_alpha_noshadows" name="ghosts_blend_alpha_noshadows">
+      <instance_effect url="#ghosts_blend_alpha_noshadows-fx"/>
+    </material>
+  </library_materials>
+  <library_effects>
+    <effect id="ghosts_blend_alpha_noshadows-fx" name="ghosts_blend_alpha_noshadows">
+      <profile_COMMON>
+        <technique sid="standard">
+          <phong>
+            <emission>
+              <color sid="emission">0.000000  0.000000 0.000000 1.000000</color>
+            </emission>
+            <ambient>
+              <color sid="ambient">0.000000  0.000000 0.000000 1.000000</color>
+            </ambient>
+            <diffuse>
+              <texture texture="temp1_file3-image" texcoord="CHANNEL0">
+                <extra>
+                  <technique profile="MAYA">
+                    <wrapU sid="wrapU0">TRUE</wrapU>
+                    <wrapV sid="wrapV0">TRUE</wrapV>
+                    <blend_mode>NONE</blend_mode>
+                  </technique>
+                </extra>
+              </texture>
+            </diffuse>
+            <specular>
+              <color sid="specular">0.500000  0.500000 0.500000 1.000000</color>
+            </specular>
+            <shininess>
+              <float sid="shininess">6.311791</float>
+            </shininess>
+            <reflective>
+              <color sid="reflective">0.000000  0.000000 0.000000 1.000000</color>
+            </reflective>
+            <reflectivity>
+              <float sid="reflectivity">0.500000</float>
+            </reflectivity>
+            <transparent opaque="RGB_ZERO">
+              <texture texture="temp1_file3-image" texcoord="CHANNEL0">
+                <extra>
+                  <technique profile="MAYA">
+                    <wrapU sid="wrapU0">TRUE</wrapU>
+                    <wrapV sid="wrapV0">TRUE</wrapV>
+                    <blend_mode>NONE</blend_mode>
+                  </technique>
+                </extra>
+              </texture>
+            </transparent>
+            <transparency>
+              <float sid="transparency">1.000000</float>
+            </transparency>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_geometries>
+    <geometry id="ghost_blue_mid-lib" name="ghost_blue_midMesh">
+      <mesh>
+        <source id="ghost_blue_mid-POSITION">
+          <float_array id="ghost_blue_mid-POSITION-array" count="24">
+-50.000000 -50.000000 50.000000
+50.000000 -50.000000 50.000000
+-50.000000 50.000000 50.000000
+50.000000 50.000000 50.000000
+-50.000000 50.000000 -50.000000
+50.000000 50.000000 -50.000000
+-50.000000 -50.000000 -50.000000
+50.000000 -50.000000 -50.000000
+</float_array>
+          <technique_common>
+            <accessor source="#ghost_blue_mid-POSITION-array" count="8" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="ghost_blue_mid-Normal0">
+          <float_array id="ghost_blue_mid-Normal0-array" count="108">
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 -1.000000 0.000000
+0.000000 -1.000000 0.000000
+0.000000 -1.000000 0.000000
+0.000000 -1.000000 0.000000
+0.000000 -1.000000 0.000000
+0.000000 -1.000000 0.000000
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+</float_array>
+          <technique_common>
+            <accessor source="#ghost_blue_mid-Normal0-array" count="36" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="ghost_blue_mid-UV0">
+          <float_array id="ghost_blue_mid-UV0-array" count="48">
+0.092482 0.077743
+0.213206 0.077743
+0.213206 0.198468
+0.092482 0.198468
+0.215894 0.077743
+0.336619 0.077743
+0.336619 0.198468
+0.215894 0.198468
+0.318105 0.199856
+0.438830 0.199856
+0.438830 0.320581
+0.318105 0.320581
+0.195247 0.199856
+0.315972 0.199856
+0.315972 0.320581
+0.195247 0.320581
+0.092482 0.321968
+0.213206 0.321968
+0.213206 0.442693
+0.092482 0.442693
+0.215894 0.321968
+0.336619 0.321968
+0.336619 0.442693
+0.215894 0.442693
+</float_array>
+          <technique_common>
+            <accessor source="#ghost_blue_mid-UV0-array" count="24" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="ghost_blue_mid-VERTEX">
+          <input semantic="POSITION" source="#ghost_blue_mid-POSITION"/>
+        </vertices>
+        <triangles count="12" material="ghosts_blend_alpha_noshadows"><input semantic="VERTEX" offset="0" source="#ghost_blue_mid-VERTEX"/><input semantic="NORMAL" offset="1" source="#ghost_blue_mid-Normal0"/><input semantic="TEXCOORD" offset="2" set="0" source="#ghost_blue_mid-UV0"/><p> 3 0 2 2 1 3 0 2 0 3 3 2 0 4 0 1 5 1 3 6 5 5 7 6 2 8 4 2 9 4 5 10 6 4 11 7 7 12 10 6 13 11 4 14 8 7 15 10 4 16 8 5 17 9 1 18 14 0 19 15 6 20 12 1 21 14 6 22 12 7 23 13 3 24 19 1 25 16 5 26 18 1 27 16 7 28 17 5 29 18 2 30 22 6 31 20 0 32 21 6 33 20 2 34 22 4 35 23</p></triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_visual_scenes>
+    <visual_scene id="ghost_blue_mid" name="ghost_blue_mid">
+      <node name="ghost_blue_mid" id="ghost_blue_mid" sid="ghost_blue_mid"><matrix sid="matrix">0.010000 0.000000 0.000000 0.000000 0.000000 0.010000 0.000000 0.000000 0.000000 0.000000 0.010000 0.000000 0.000000 0.000000 0.000000 1.000000</matrix><instance_geometry url="#ghost_blue_mid-lib"><bind_material><technique_common><instance_material symbol="ghosts_blend_alpha_noshadows" target="#ghosts_blend_alpha_noshadows"/></technique_common></bind_material></instance_geometry><extra><technique profile="FCOLLADA"><visibility>1.000000</visibility></technique></extra></node>
+      <extra><technique profile="MAX3D"><frame_rate>24.000000</frame_rate></technique><technique profile="FCOLLADA"><start_time>0.041667</start_time><end_time>2.000000</end_time></technique></extra>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#ghost_blue_mid"></instance_visual_scene>
+  </scene>
+</COLLADA>

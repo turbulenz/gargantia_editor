@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+  <asset>
+    <contributor>
+      <author>jmillson</author>
+      <authoring_tool>OpenCOLLADA2013 x64</authoring_tool>
+      <comments>
+			ColladaMaya export options: 
+			bakeTransforms=1;relativePaths=0;copyTextures=0;exportTriangles=0;exportCgfxFileReferences=1;
+			isSampling=0;curveConstrainSampling=0;removeStaticCurves=1;exportPolygonMeshes=1;exportLights=1;
+			exportCameras=1;exportJointsAndSkin=1;exportAnimations=1;exportInvisibleNodes=0;exportDefaultCameras=0;
+			exportTexCoords=1;exportNormals=1;exportNormalsPerVertex=1;exportVertexColors=1;exportVertexColorsPerVertex=1;
+			exportTexTangents=0;exportTangents=0;exportReferencedMaterials=0;exportMaterialsOnly=0;
+			exportXRefs=1;dereferenceXRefs=1;exportCameraAsLookat=0;cameraXFov=0;cameraYFov=1;doublePrecision=0
+		</comments>
+      <source_data>file:///C:/Dev_Perforce/NewIPs/Gargantia/Maya/Environment/Sky_furnitures_FINAL.ma</source_data>
+    </contributor>
+    <created>2014-05-16T10:56:22</created>
+    <modified>2014-05-16T10:56:22</modified>
+    <unit name="meter" meter="1"/>
+    <up_axis>Y_UP</up_axis>
+  </asset>
+  <library_materials>
+    <material id="collectable_weather" name="collectable_weather">
+      <instance_effect url="#collectable_weather-fx"/>
+    </material>
+  </library_materials>
+  <library_effects>
+    <effect id="collectable_weather-fx">
+      <profile_COMMON>
+        <newparam sid="file12-surface">
+          <surface type="2D">
+            <init_from>file12</init_from>
+          </surface>
+        </newparam>
+        <newparam sid="file12-sampler">
+          <sampler2D>
+            <source>file12-surface</source>
+          </sampler2D>
+        </newparam>
+        <technique sid="common">
+          <blinn>
+            <emission>
+              <color>0 0 0 1</color>
+            </emission>
+            <ambient>
+              <color>0 0 0 1</color>
+            </ambient>
+            <diffuse>
+              <texture texture="file12-sampler" texcoord="TEX0">
+                <extra>
+                  <technique profile="OpenCOLLADAMaya">
+                    <blend_mode>NONE</blend_mode>
+                    <coverageU>1</coverageU>
+                    <coverageV>1</coverageV>
+                    <fast>0</fast>
+                    <mirrorU>0</mirrorU>
+                    <mirrorV>0</mirrorV>
+                    <noiseU>0</noiseU>
+                    <noiseV>0</noiseV>
+                    <offsetU>0</offsetU>
+                    <offsetV>0</offsetV>
+                    <repeatU>1</repeatU>
+                    <repeatV>1</repeatV>
+                    <rotateFrame>0</rotateFrame>
+                    <rotateUV>0</rotateUV>
+                    <stagger>0</stagger>
+                    <translateFrameU>0</translateFrameU>
+                    <translateFrameV>0</translateFrameV>
+                    <wrapU>1</wrapU>
+                    <wrapV>1</wrapV>
+                  </technique>
+                </extra>
+              </texture>
+            </diffuse>
+            <specular>
+              <color>0.5 0.5 0.5 1</color>
+            </specular>
+            <shininess>
+              <float>0</float>
+            </shininess>
+            <reflective>
+              <color>0 0 0 1</color>
+            </reflective>
+            <reflectivity>
+              <float>0.5</float>
+            </reflectivity>
+            <transparent opaque="RGB_ZERO">
+              <color>0 0 0 1</color>
+            </transparent>
+            <transparency>
+              <float>1</float>
+            </transparency>
+          </blinn>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_images>
+    <image id="file12" name="file12">
+      <init_from>/textures/collectable_weather.dds</init_from>
+      <extra>
+        <technique profile="OpenCOLLADAMaya">
+          <dgnode_type>kFile</dgnode_type>
+          <image_sequence>0</image_sequence>
+          <originalMayaNodeId>file12</originalMayaNodeId>
+        </technique>
+      </extra>
+    </image>
+  </library_images>
+  <library_geometries>
+    <geometry id="collectable_box0Shape1" name="collectable_box0Shape1">
+      <mesh>
+        <source id="collectable_box0Shape1-positions" name="collectable_box0Shape1-positions">
+          <float_array id="collectable_box0Shape1-positions-array" count="60">-0.5703653 -3.992557 0.5703653 0.5703653 -3.992557 0.5703653 -0.5703653 0.5703653 0.5703653 0.5703653 0.5703653 0.5703653 -0.5703653 0.5703653 -0.5703653 0.5703653 0.5703653 -0.5703653 -0.5703653 -3.992557 -0.5703653 0.5703653 -3.992557 -0.5703653 -0.5703653 -1.868462 0.5703653 -0.5703653 -1.868462 -0.5703653 0.5703653 -1.868462 -0.5703653 0.5703653 -1.868462 0.5703653 -0.5703653 -0.7471053 0.5703653 -0.5703653 -0.7471053 -0.5703653 0.5703653 -0.7471053 -0.5703653 0.5703653 -0.7471053 0.5703653 -0.5703653 -2.924643 0.5703653 -0.5703653 -2.924643 -0.5703653 0.5703653 -2.924643 -0.5703653 0.5703653 -2.924643 0.5703653</float_array>
+          <technique_common>
+            <accessor source="#collectable_box0Shape1-positions-array" count="20" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="collectable_box0Shape1-normals" name="collectable_box0Shape1-normals">
+          <float_array id="collectable_box0Shape1-normals-array" count="144">0 0 1 0 0 1 0 0 0.9999999 0 0 0.9999999 0 1 0 0 1 0 0 1 0 0 1 0 0 0 -0.9999999 0 0 -0.9999999 0 0 -1 0 0 -1 0 -1 0 0 -1 0 0 -1 0 0 -1 0 1 0 0 1 0 0 0.9999999 0 0 0.9999999 0 0 -1 0 0 -1 0 0 -0.9999999 0 0 -0.9999999 0 0 -1 0 0 -1 0 0 -1 0 0 -1 0 0 0 0 -1 0 0 -1 0 0 -1 0 0 -1 1 0 0 1 0 0 1 0 0 1 0 0 0 0 1 0 0 1 0 0 1 0 0 1 -0.9999999 0 0 -0.9999999 0 0 0 0 -0.9999999 0 0 -0.9999999 0.9999999 0 0 0.9999999 0 0 0 0 0.9999999 0 0 0.9999999</float_array>
+          <technique_common>
+            <accessor source="#collectable_box0Shape1-normals-array" count="48" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="collectable_box0Shape1-map1" name="collectable_box0Shape1-map1">
+          <float_array id="collectable_box0Shape1-map1-array" count="144">0.4421019 0.4031828 0.4421019 0.2832783 0.4421018 0.2832783 0.4421018 0.4031828 0.5608621 0.4031828 0.5608621 0.2832783 0.4421018 0.2832783 0.4421018 0.4031828 0.4421018 0.2832783 0.4421018 0.4031828 0.4421018 0.4031828 0.4421018 0.2832783 0.4421019 0.4031828 0.4421019 0.2832783 0.5608621 0.2832783 0.5608621 0.4031828 0.4421019 0.4031828 0.4421019 0.2832783 0.4421018 0.2832783 0.4421018 0.4031828 0.4421019 0.4031828 0.4421019 0.2832783 0.4421018 0.2832783 0.4421018 0.4031828 0.4421018 0.2832783 0.4421018 0.4031828 0.4421018 0.4031828 0.4421018 0.2832783 0.4421018 0.4031828 0.4421018 0.2832783 0.4421018 0.2832783 0.4421018 0.4031828 0.5608621 0.2832783 0.5608621 0.4031828 0.5608621 0.4031828 0.5608621 0.2832783 0.5608621 0.4031828 0.5608621 0.2832783 0.5608621 0.2832783 0.5608621 0.4031828 0.5608621 0.2832783 0.5608621 0.4031828 0.5608621 0.4031828 0.5608621 0.2832783 0.5608621 0.4031828 0.5608621 0.2832783 0.5608621 0.2832783 0.5608621 0.4031828 0.5608621 0.2832783 0.5608621 0.4031828 0.5608621 0.2832783 0.5608621 0.4031828 0.5608621 0.2832783 0.5608621 0.4031828 0.5608621 0.2832783 0.5608621 0.4031828 0.5608621 0.2832783 0.5608621 0.4031828 0.4421019 0.4031828 0.4421019 0.2832783 0.5608621 0.2832783 0.5608621 0.4031828 0.4421018 0.4031828 0.4421018 0.2832783 0.4421019 0.4031828 0.4421019 0.2832783 0.5608621 0.2832783 0.5608621 0.4031828 0.4421019 0.4031828 0.4421019 0.2832783 0.5608621 0.2832783 0.5608621 0.4031828</float_array>
+          <technique_common>
+            <accessor source="#collectable_box0Shape1-map1-array" count="72" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="collectable_box0Shape1-vertices" name="collectable_box0Shape1-vertices">
+          <input semantic="POSITION" source="#collectable_box0Shape1-positions"/>
+        </vertices>
+        <polylist material="collectable_weatherSG" count="18">
+          <input semantic="VERTEX" source="#collectable_box0Shape1-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#collectable_box0Shape1-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#collectable_box0Shape1-map1" offset="2" set="0"/>
+          <vcount>4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4</vcount>
+          <p>0 0 0 1 1 1 19 2 50 16 3 51 2 4 4 3 5 5 5 6 6 4 7 7 17 8 52 18 9 53 7 10 10 6 11 11 6 12 12 7 13 13 1 14 14 0 15 15 1 16 16 7 17 17 18 18 54 19 19 55 6 20 20 0 21 21 16 22 56 17 23 57 9 24 58 8 25 59 12 26 32 13 27 49 13 28 60 14 29 61 10 30 62 9 31 63 11 32 64 10 33 65 14 34 66 15 35 67 8 36 68 11 37 69 15 38 70 12 39 71 13 27 34 12 26 48 2 40 22 4 41 23 4 42 8 5 43 9 14 29 36 13 28 35 15 35 39 14 34 37 5 44 18 3 45 19 12 39 33 15 38 38 3 46 2 2 47 3 17 23 42 16 22 40 8 25 24 9 24 26 9 31 27 10 30 28 18 9 44 17 8 43 19 19 47 18 18 45 10 33 29 11 32 31 16 3 41 19 2 46 11 37 30 8 36 25</p>
+        </polylist>
+      </mesh>
+      <extra>
+        <technique profile="OpenCOLLADAMaya">
+          <originalMayaNodeId>collectable_box0Shape1</originalMayaNodeId>
+          <double_sided>1</double_sided>
+        </technique>
+      </extra>
+    </geometry>
+  </library_geometries>
+  <library_visual_scenes>
+    <visual_scene id="VisualSceneNode" name="Sky_furnitures_FINAL">
+      <node id="collectable_box01" name="collectable_box01" type="NODE">
+        <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+        <instance_geometry url="#collectable_box0Shape1">
+          <bind_material>
+            <technique_common>
+              <instance_material symbol="collectable_weatherSG" target="#collectable_weather">
+                <bind_vertex_input semantic="TEX0" input_semantic="TEXCOORD" input_set="0"/>
+              </instance_material>
+            </technique_common>
+          </bind_material>
+        </instance_geometry>
+        <extra>
+          <technique profile="OpenCOLLADAMaya">
+            <originalMayaNodeId>collectable_box01</originalMayaNodeId>
+          </technique>
+        </extra>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#VisualSceneNode"/>
+  </scene>
+</COLLADA>

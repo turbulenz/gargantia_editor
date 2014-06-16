@@ -1,0 +1,216 @@
+// Copyright (c) 2009-2014 Turbulenz Limited
+
+#include "skinning.cgh"
+
+//
+// Uniform variables
+//
+float4x4 worldViewProjection;
+
+float4 materialColor = {1.0, 1.0, 1.0, 1.0};
+
+sampler2D diffuse : register(s0) = sampler_state
+{
+    MinFilter = LinearMipMapNearest;
+    MagFilter = Linear;
+    WrapS = ClampToEdge;
+    WrapT = ClampToEdge;
+    MaxAnisotropy = 4;
+};
+
+//
+// Utils
+//
+float4 PointToDevice(float3 pt, float4x4 transform)
+{
+    return pt.xxxx * transform[0] +
+           pt.yyyy * transform[1] +
+           pt.zzzz * transform[2] +
+                     transform[3];
+}
+
+//
+// Vertex programs
+//
+void vp_nolight_vertexcolor(in float3 INPosition : POSITION,
+                            in float2 INUV       : TEXCOORD0,
+                            in float4 INColor    : COLOR,
+                            out float4 OUTPosition : POSITION,
+                            out float4 OUTColor    : COLOR,
+                            out float2 OUTUV       : TEXCOORD0)
+{
+    OUTPosition = PointToDevice(INPosition, worldViewProjection);
+    OUTColor = float4(INColor.xyz * materialColor.xyz, INColor.w);
+    OUTUV = INUV;
+}
+
+//
+// Fragment programs
+//
+float4 fp_sp_normal(in float4 INColor : COLOR,
+                    in float2 INUV    : TEXCOORD0) : COLOR
+{
+    float4 color = INColor * tex2D(diffuse, INUV);
+    if (color.w < 0.004)
+    {
+        discard;
+    }
+    return color;
+}
+
+float4 fp_sp_premodulatealpha(in float4 INColor : COLOR,
+                              in float2 INUV    : TEXCOORD0) : COLOR
+{
+    float4 color = INColor * tex2D(diffuse, INUV);
+    color.xyz *= color.w;
+    return color;
+}
+
+//
+// Techniques
+//
+technique blend_particle
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = true;
+        BlendFunc       = int2(SrcAlpha, InvSrcAlpha);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_nolight_vertexcolor();
+        FragmentProgram = compile latest fp_sp_normal();
+    }
+}
+
+technique add_particle
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = true;
+        BlendFunc       = int2(SrcAlpha, One);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_nolight_vertexcolor();
+        FragmentProgram = compile latest fp_sp_normal();
+    }
+}
+
+technique blend_particle_no_z
+{
+    pass
+    {
+        DepthTestEnable = false;
+        DepthFunc       = Always;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = true;
+        BlendFunc       = int2(SrcAlpha, InvSrcAlpha);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_nolight_vertexcolor();
+        FragmentProgram = compile latest fp_sp_normal();
+    }
+}
+
+technique add_particle_no_z
+{
+    pass
+    {
+        DepthTestEnable = false;
+        DepthFunc       = Always;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = true;
+        BlendFunc       = int2(SrcAlpha, One);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_nolight_vertexcolor();
+        FragmentProgram = compile latest fp_sp_normal();
+    }
+}
+
+
+technique invfilter_particle
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = true;
+        BlendFunc       = int2(Zero, InvDestColor);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_nolight_vertexcolor();
+        FragmentProgram = compile latest fp_sp_normal();
+    }
+}
+
+technique add_particle_mod_colour
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = true;
+        BlendFunc       = int2(DestColor, One);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_nolight_vertexcolor();
+        FragmentProgram = compile latest fp_sp_premodulatealpha();
+    }
+}
+
+technique add_particle_mod_colour_no_z
+{
+    pass
+    {
+        DepthTestEnable = false;
+        DepthFunc       = Always;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = true;
+        BlendFunc       = int2(DestColor, One);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_nolight_vertexcolor();
+        FragmentProgram = compile latest fp_sp_premodulatealpha();
+    }
+}
+
+technique test_particle
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        //BlendEquation   = int(FuncAdd);
+        BlendEnable     = true;
+        BlendFunc       = int2(InvDestColor, InvSrcAlpha);
+        PolygonOffset   = float2(-1.0, -1.0);
+        PolygonOffsetFillEnable = true;
+
+        VertexProgram   = compile latest vp_nolight_vertexcolor();
+        FragmentProgram = compile latest fp_sp_premodulatealpha();
+    }
+}

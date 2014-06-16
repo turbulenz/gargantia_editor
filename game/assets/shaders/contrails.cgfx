@@ -1,0 +1,52 @@
+// Copyright (c) 2014 Turbulenz Limited
+
+sampler2D diffuse = sampler_state
+{
+    MinFilter = LinearMipMapNearest;
+    MagFilter = Linear;
+    WrapS     = Repeat;
+    WrapT     = Repeat;
+};
+
+float4x4 viewProjection;
+float uvAnimationTime;
+float uvAnimationScale;
+float3 lightColor;
+
+void vp_contrail(in  float4 InPositionH : POSITION,
+                 in  float3 InUVAlpha   : TEXCOORD0,
+                 out float4 OutPosition : POSITION,
+                 out float4 OutUVAlpha  : TEXCOORD0)
+{
+    OutPosition = mul(float4(InPositionH.xyz, 1.0), viewProjection);
+    float h = InPositionH.w;
+    OutUVAlpha = float4(InUVAlpha * h, h);
+    OutPosition.z = 0;
+}
+
+float4 fp_contrail(in float4 wpos: WPOS,
+                   in float4 uvAlpha: TEXCOORD0) : COLOR
+{
+    uvAlpha.xyz /= uvAlpha.w;
+    float4 tex = tex2D(diffuse, float2(uvAnimationScale, 1.0) * (uvAlpha.xy + float2(uvAnimationTime, 0.0)));
+    tex.rgb *= lightColor;
+    tex.w *= uvAlpha.z;
+    tex.w *= saturate(wpos.z / wpos.w);
+    return tex;
+}
+
+technique contrail
+{
+    pass
+    {
+        DepthTestEnable = true;
+        DepthFunc       = LEqual;
+        DepthMask       = false;
+        CullFaceEnable  = false;
+        BlendEnable     = true;
+        BlendFunc       = int2(SrcAlpha, InvSrcAlpha);
+
+        VertexProgram   = compile latest vp_contrail();
+        FragmentProgram = compile latest fp_contrail();
+    }
+}

@@ -1,0 +1,354 @@
+/* Copyright (c) 2012-2014 Turbulenz Limited */
+
+.dynamicui
+{
+    background-color: #242424;
+    color: #c1c1c1;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.dynamicui::-webkit-scrollbar {
+    width: 6px;
+}
+.dynamicui::-webkit-scrollbar-track {
+    background-color: black;
+}
+.dynamicui::-webkit-scrollbar-thumb {
+    background-color: #5d5d5d;
+}
+.dynamicui::-webkit-scrollbar-button {
+    display: none;
+}
+.dynamicui::-webkit-scrollbar-corner {
+    display: none;
+}
+
+.dynamicui *
+{
+    box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+}
+
+.dynamicui .hidden
+{
+    display: none;
+}
+
+.dynamicui .dui-group
+{
+    padding: 3px;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dynamicui .dui-group .dui-group
+{
+    padding: 1px 0 1px 3px;
+}
+
+.dynamicui .dui-group-contents
+{
+    width: 100%;
+    overflow: hidden;
+    padding-left: 3px;
+}
+
+.dynamicui .collapsable.collapsed > .dui-group-title:before {
+    content: "▸ ";
+}
+
+.dynamicui .collapsable > .dui-group-title:before {
+    content: "▾ ";
+}
+
+.dynamicui .collapsable > .dui-group-contents
+{
+    padding-left: 4px;
+    border-left: 2px solid #888888;
+}
+
+.dynamicui .collapsable.collapsed > .dui-group-contents
+{
+    display: none;
+}
+
+.dui-group-title
+{
+    height: 22px;
+
+    padding: 0 3px;
+    margin: 1px 3px;
+
+    font-size: 14px;
+    font-family: Helvetica, sans-serif;
+
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.dynamicui .collapsable .dui-group-title
+{
+    cursor: pointer;
+}
+
+.dui-control
+{
+    display: flex;
+    align-content: flex-start;
+
+    font-size: 10px;
+    font-family: Helvetica, sans-serif;
+
+    padding: 1px 1px;
+}
+
+.dui-control-title
+{
+    vertical-align: middle;
+    text-align: left;
+    flex: 1 1 40%;
+
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.dui-control.short-widget .dui-control-title
+{
+    flex: 1 1 auto;
+}
+
+.dui-control-widget
+{
+    vertical-align: middle;
+    text-align: right;
+    flex: 1 1 60%;
+
+    padding: 0 3px;
+
+    display: flex;
+    justify-content: flex-end;
+    align-content: center;
+}
+
+.dui-control.short-widget .dui-control-widget
+{
+    flex: 1 1 auto;
+}
+
+.dui-control-widget.multi
+{
+    flex-direction: column;
+    background-color: rgba(0, 0, 0, 0.4);
+    border-radius: 3px;
+}
+
+.dui-control-widget-row
+{
+    display: flex;
+    align-content: center;
+}
+
+.dynamicui .separator
+{
+    background-color: rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid #ffffff;
+    margin: 2px 0 2px 0;
+}
+
+.dui-control.title-ui
+{
+    text-align: left;
+    text-decoration: underline;
+    color: #c1c1c1;
+    margin-top: 10px;
+}
+
+.dui-control.description
+{
+    font-style: italic;
+    margin-left: 10px;
+    text-align: left;
+    color: #c1c1c1;
+}
+
+.dui-control-widget input
+{
+    flex: 1 1 auto;
+    height: 18px;
+
+    padding: 0 3px;
+    margin: 1px 0;
+
+    background-color: #333333;
+    color: #c1c1c1;
+
+    border: 1px solid #c1c1c1;
+    border-radius: 2px;
+}
+
+
+.dui-control-widget input[type=checkbox]
+{
+    height: 13px;
+    flex: 0 0 auto;
+}
+
+.dui-control-value
+{
+    vertical-align: middle;
+    width: 3em;
+}
+
+.dui-control-label
+{
+    text-align: left;
+    vertical-align: middle;
+    width: 3em;
+}
+
+.dui-control-select, .dui-control-button {
+    font-size: 10px;
+    font-family: Helvetica, sans-serif;
+
+    color: #c1c1c1;
+    background-color: #333333;
+    border-radius: 3px;
+}
+
+.dui-control-select {
+    height: 18px;
+    flex: 1 1 auto;
+
+    padding: 0;
+    margin: 0;
+
+    border: 1px solid #c1c1c1;
+}
+
+.dui-control-button {
+    height: 16px;
+
+    padding: 0 3px;
+    margin: 1px 0 1px 3px;
+
+    border: 1px solid black;
+    box-shadow: inset 0 26px 10px -25px rgba(255,255,255,0.8);
+}
+
+.dui-control-invalidated {
+    color: #ffffff !important;
+    background-color: #401010 !important;
+}
+
+.dui-control-slider {
+    flex: 100 1 auto;
+
+    border: 0;
+    margin: auto;
+
+    background: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+}
+
+.dui-control-slider.ui-disabled {
+    background: grey;
+    cursor: default;
+}
+
+.dui-control-slider .ui-slider-handle{
+    width: 3px;
+    height: 9px;
+    top: 0;
+
+    background: black;
+    cursor: pointer;
+    margin-left: -2px;
+
+    border: 0;
+    border-radius: 0;
+}
+
+.dui-control-slider.ui-disabled .ui-slider-handle{
+    background: grey;
+    cursor: default;
+}
+
+.dui-control-colorpicker {
+    border: 1px solid #c1c1c1;
+    border-radius: 3px;
+}
+
+.sp-container {
+    border-radius: 3px;
+    background-color: #333333;
+    border: solid 1px black;
+    padding: 0;
+}
+
+.sp-picker-container
+{
+    width: 300px;
+    border: 0;
+}
+
+.dynamicui .tree
+{
+    margin: 2px 5px;
+    cursor: pointer;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.dynamicui .tree-folder-content
+{
+    padding-left: 3px;
+}
+
+.dynamicui .tree .fa {
+    line-height: inherit;
+    margin-right: 5px;
+    flex: 0 0 auto;
+}
+
+.dynamicui .tree .icon-folder-open:before {
+    content: "\f07c";
+    margin-left: 3px;
+}
+
+.dynamicui .tree .icon-folder-close:before {
+    content: "\f07b";
+    margin-left: 3px;
+}
+
+.dynamicui .tree .tree-dot:before  {
+    content: "\f15b";
+    margin-left: 20px;
+}
+
+.dynamicui .tree .icon-ok:before  {
+    content: "\f016";
+    margin-left: 20px;
+}
+
+.dynamicui .tree-folder-header, .tree-item-contents
+{
+    display: flex;
+}
+
+.dynamicui .tree-folder-name, .dynamicui .tree-item-name
+{
+    flex: 0 1 auto;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.dynamicui .tree-folder-controls, .dynamicui .tree-item-controls
+{
+    flex: 1 0 auto;
+}
