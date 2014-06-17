@@ -3,7 +3,7 @@
 
 ## Introduction
 
-This repository contains all the code required to run and edit the first level of [Gargantia Sky Courier](http://fly.gargantia.jp) a 3D arcade flight simulator based on the [Turbulenz Engine](https://github.com/turbulenz/turbulenz_engine). The article on [Modern.ie](http://modern.ie) gives an introduction to the project and some of the interesting technology that you can find here, while this readme contains all the technical info you need to get up and running!
+This repository contains all the code required to run and edit the first mission of [Gargantia: Sky Courier](http://fly.gargantia.jp) a 3D arcade flight simulator based on the [Turbulenz Engine](http://github.com/turbulenz/turbulenz_engine). The developer teardown article on [Modern.IE](http://www.modern.ie/en-us/demos/gargantia) gives an introduction to the project and the technology, while this README contains all the technical info you need to get up and running!
 
 ## Installation
 
@@ -11,7 +11,7 @@ To get started all you need is the code in this repository and a simple web serv
 
 ## Running a web server
 
-To actually see the code running you will need two things, a web server and a modern WebGL enabled web browser such as IE11, Chrome, Firefox or Safari. If you have a simple web server already installed then you just need to point it at the root directory, there is an index.html file that will load and run the project. If not then you can try either of these simple options
+To actually see the code running you will need two things, a web server and a modern web browser that supports WebGL, such as Internet Explorer 11, Chrome or Firefox. If you have a simple web server already installed then you just need to point it at the root directory, there is an index.html file that will load and run the project. If not then you can try either of these simple options:
 
 ### Python: SimpleHTTPServer
 
@@ -47,7 +47,7 @@ Your firewall may ask for permission to allow node.js to access the network - yo
 
 ### Running the sample
 
-With your chosen web server running you simply need to open a browser and navigate to http://localhost:8000
+With your chosen web server running you simply need to open a web browser and navigate to http://localhost:8000
 
 ## The Game
 
@@ -95,12 +95,9 @@ The software in this repository is provided under the conditions specified in th
 
 ## Links
 
+- [Gargantia: Sky Courier](http://fly.gargantia.jp)
 - [Turbulenz Engine](http://biz.turbulenz.com)
-- Gargantia Sky Courier
-- [GA.ME](http://ga.me)
-- Production IG
-- Modern.ie
-- Gargantia
+- [Modern.IE](http://www.modern.ie)
 
 ## Credits
 
