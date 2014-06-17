@@ -97,7 +97,8 @@ The software in this repository is provided under the conditions specified in th
 
 - [Gargantia: Sky Courier](http://fly.gargantia.jp)
 - [Turbulenz Engine](http://biz.turbulenz.com)
-- [Modern.IE](http://www.modern.ie)
+- [Modern.IE Developer Teardown Article (English)](http://www.modern.ie/en-us/demos/gargantia)
+- [Modern.IE Developer Teardown Article (Japanese)](http://www.modern.ie/ja-jp/demos/gargantia)
 
 ## Credits
 
