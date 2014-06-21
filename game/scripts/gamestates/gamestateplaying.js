@@ -58,14 +58,6 @@ GamestatePlaying.prototype =
             gameManager.setHero(heroEntity);
         }
 
-        for(var i = 0; i < 10; ++i) {
-            var x = Math.random() * 100;
-            var y = Math.random() * 100;
-            var z = Math.random() * 100;
-            var friendEntity = gameManager.createFriend('Friend', 'a_friend', new Float32Array([1893.5 + x, 579.9559936523438 + y, 269.5 + z]));
-            var loc = friendEntity.getEC('ECLocomotion');
-            loc.respawn({ entity: friendEntity });
-        }
 
         var previousPlaystate = gameManager.getPlayState();
 

@@ -1060,7 +1060,7 @@ Application.prototype =
         globals.guiRenderer            = guiRenderer;
 
         //Dynamic UI
-        globals.dynamicUI            = Config.enableDynamicUI ? DynamicUIManager.create("Debug Sliders", this.debugSliders) : null;
+        //globals.dynamicUI            = Config.enableDynamicUI ? DynamicUIManager.create("Debug Sliders", this.debugSliders) : null;
 
         // Draw2D
         globals.draw2D               = Draw2D.create({graphicsDevice : graphicsDevice});

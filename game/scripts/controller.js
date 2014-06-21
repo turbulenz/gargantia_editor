@@ -171,6 +171,8 @@ GameController.prototype =
             {
                 this.updateMovementFromTouch();
             }
+
+            this.keyStatusUpdated = false;
         }
     },
 
@@ -526,6 +528,30 @@ GameController.prototype =
         if (ecLocomotion)
         {
             ecLocomotion.setControls(bank, lift, boost);
+
+            var postData = null;
+            var gameManager = this.globals.gameManager;
+
+            if(this.keyStatusUpdated) {
+                if(postData == null) { postData = {}; }
+
+                postData.bank = bank;
+                postData.lift = lift;
+                postData.boost = boost;
+            }
+
+            if(gameManager.gameClock.currentFrame % 180 == 0) {
+                if(postData == null) { postData = {}; }
+
+                var loc = this.heroEntity.getEC('ECLocomotion');
+                postData.position = Array.prototype.slice.apply(loc.position);
+                postData.orientation = Array.prototype.slice.apply(loc.orientation);
+                postData.velocity = Array.prototype.slice.apply(loc.velocity);
+            }
+
+            if(postData != null) {
+                gameManager.socket.emit('update', postData);
+            }
         }
     },
 
@@ -539,6 +565,7 @@ GameController.prototype =
 
         this.touchMode = false;
         this.padMode = false;
+        this.keyStatusUpdated = true;
     },
 
     onKeyDown : function gameControllerOnKeyDownFn(keyCode)
@@ -627,6 +654,7 @@ GameController.prototype =
         }
 
         this.pressedKeys[keyCode] = true;
+        this.keyStatusUpdated = true;
     },
 
     evaluateMouseOwnership : function gameControllerEvaluateMouseOwnershipFn()

@@ -1,0 +1,14 @@
+{
+  "name": "gargantia_editor",
+  "version": "0.0.0",
+  "description": "",
+  "main": "server.js",
+  "dependencies": {
+    "socket.io": "~1.0.6",
+    "express": "~4.4.4"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node server.js"
+  }
+}
