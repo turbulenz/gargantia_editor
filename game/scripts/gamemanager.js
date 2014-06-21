@@ -140,6 +140,17 @@ GameManager.prototype =
         this.gameController.initUI();
     },
 
+    createFriend : function gameManagerCreateFriendFn(friendName, friendArchType, v3Location)
+    {
+        var entityFactory   =   this.getEntityFactory();
+
+        var v3LocationToUse  =  v3Location || this.getLevelStartLocation();
+
+        var newEntity   =   entityFactory.createActiveEntityInstance(friendName, friendArchType, v3LocationToUse);
+
+        return  newEntity;
+    },
+
     createHero : function gameManagerCreateHeroFn(heroName, heroArchetype, v3Location)
     {
         var entityFactory   =   this.getEntityFactory();
