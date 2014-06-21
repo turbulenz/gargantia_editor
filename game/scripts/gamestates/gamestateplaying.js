@@ -58,6 +58,7 @@ GamestatePlaying.prototype =
             gameManager.setHero(heroEntity);
         }
 
+
         var previousPlaystate = gameManager.getPlayState();
 
         if (!this.currentPlayState && previousPlaystate)

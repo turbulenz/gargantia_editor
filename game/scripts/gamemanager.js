@@ -64,6 +64,109 @@ GameManager.prototype =
 
         this.refreshLighting();
 
+        this.socket = io('http://127.0.0.1:3000');
+        this.users = [];
+
+        var that = this;
+        this.socket.on('welcome', function(resp) {
+            that.id = resp.your_info.id;
+            that.users = resp.users.map(function(user){
+                return {
+                    id: user.id,
+                    lift: user.lift,
+                    bank: user.bank,
+                    boost: user.boost,
+                    position: new Float32Array(user.position),
+                    orientation: new Float32Array(user.orientation),
+                    velocity: new Float32Array(user.velocity),
+                    entity: null
+                };
+            });
+        });
+
+        this.socket.on('join', function (user) {
+            that.users.push({
+                id: user.id,
+                lift: user.lift,
+                bank: user.bank,
+                boost: user.boost,
+                position: new Float32Array(user.position),
+                orientation: new Float32Array(user.orientation),
+                velocity: new Float32Array(user.velocity),
+                entity: null
+            });
+        });
+
+        this.socket.on('quit', function (quitUser) {
+            var user = null;
+            for(var i = 0; i < that.users.length; i++) {
+                if(that.users[i].id === quitUser.id) {
+                    user = that.users[i];
+                    if(user.entity != null) {
+                        user.entity.destroy();
+                        user.entity = null;
+                    }
+                    that.users.splice(i, 0);
+                    return;
+                }
+            }
+        });
+
+        this.socket.on('update', function (updatedUser) {
+            var user = null;
+            for(var i = 0; i < that.users.length; i++) {
+                if(that.users[i].id === updatedUser.id) {
+                    user = that.users[i];
+                    break;
+                }
+            }
+
+            if(user == null) {
+                return;
+            }
+
+            var entity = user.entity;
+
+            if(updatedUser.lift != null) {
+                user.lift = updatedUser.lift;
+            }
+
+            if(updatedUser.bank != null) {
+                user.bank = updatedUser.bank;
+            }
+
+            if(updatedUser.boost != null) {
+                user.boost = updatedUser.boost;
+            }
+
+            if(updatedUser.position != null) {
+                user.position = new Float32Array(updatedUser.position);
+            }
+
+            if(updatedUser.orientation != null) {
+                user.orientation = new Float32Array(updatedUser.orientation);
+            }
+
+            if(updatedUser.velocity != null) {
+                user.velocity = new Float32Array(updatedUser.velocity);
+            }
+
+            if(entity != null) {
+                var loc = entity.getEC('ECLocomotion');
+                if(updatedUser.position != null) {
+                    loc.position = new Float32Array(updatedUser.position);
+                }
+
+                if(updatedUser.orientation != null) {
+                    loc.orientation = new Float32Array(updatedUser.orientation);
+                }
+
+                if(updatedUser.velocity != null) {
+                    loc.velocity = new Float32Array(updatedUser.velocity);
+                }
+            }
+        });
+
         this.scratchpad = {
             inRay: {
                 origin : null,
@@ -138,6 +241,17 @@ GameManager.prototype =
 
         this.gameLighting.initUI();
         this.gameController.initUI();
+    },
+
+    createFriend : function gameManagerCreateFriendFn(friendName, friendArchType, v3Location)
+    {
+        var entityFactory   =   this.getEntityFactory();
+
+        var v3LocationToUse  =  v3Location || this.getLevelStartLocation();
+
+        var newEntity   =   entityFactory.createActiveEntityInstance(friendName, friendArchType, v3LocationToUse);
+
+        return  newEntity;
     },
 
     createHero : function gameManagerCreateHeroFn(heroName, heroArchetype, v3Location)
@@ -1530,10 +1644,35 @@ GameManager.prototype =
         }
     },
 
+    updateUsers: function() {
+        for(var i = 0; i < this.users.length; i ++) {
+            var user = this.users[i];
+            var loc = null;
+            if(user.entity == null) {
+                var entity = this.createFriend('Friend', 'a_ledo');
+                loc = entity.getEC('ECLocomotion');
+                loc.reset();
+                loc.position = user.position;
+                loc.orientation = user.orientation;
+                loc.velocity = user.velocity;
+                loc.update();
+                user.entity = entity;
+            }
+
+            if(loc == null) {
+                loc = user.entity.getEC('ECLocomotion');
+            }
+
+            loc.setControls(user.bank, user.lift, user.boost);
+        }
+    },
+
     updateGame : function gameManagerUpdateGameFn()
     {
         this.activeEntityCount  =   0;
         this.activeSpaceCount   =   0;
+
+        this.updateUsers();
 
         this.calculateCurrentSpace();
 
