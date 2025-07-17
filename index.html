@@ -502,8 +502,10 @@ TurbulenzEngine.onload = function onloadFn()
                     TurbulenzEngine.onunload.call(this);
                 }
             };  // window.beforeunload
-
-            startCanvas();
+            
+            // @see https://developer.chrome.com/blog/autoplay/
+            // @see https://webkit.org/blog/7734/auto-play-policy-changes-for-macos/
+            document.getElementById("engine").addEventListener("click", () => startCanvas(), {once: true});
         };  // window.onload()
 
     </script>

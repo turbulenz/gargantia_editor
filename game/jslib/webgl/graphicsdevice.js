@@ -3486,20 +3486,20 @@ var techniqueParameterBufferCreate = function techniqueParameterBufferCreateFn(p
         /* tslint:disable:no-empty */
         Float32Array.prototype.unmap = function techniqueParameterBufferUnmap(writer) {
         };
-
-        /* tslint:enable:no-empty */
-        Float32Array.prototype.setData = function techniqueParameterBufferSetData(data, offset, numValues) {
-            if (offset === undefined) {
-                offset = 0;
-            }
-            if (numValues === undefined) {
-                numValues = this.length;
-            }
-            for (var n = 0; n < numValues; n += 1, offset += 1) {
-                this[offset] = data[n];
-            }
-        };
     }
+
+    /* tslint:enable:no-empty */
+    Float32Array.prototype.setData = function techniqueParameterBufferSetData(data, offset, numValues) {
+        if (offset === undefined) {
+            offset = 0;
+        }
+        if (numValues === undefined) {
+            numValues = this.length;
+        }
+        for (var n = 0; n < numValues; n += 1, offset += 1) {
+            this[offset] = data[n];
+        }
+    };
 
     return new Float32Array(params.numFloats);
 };
